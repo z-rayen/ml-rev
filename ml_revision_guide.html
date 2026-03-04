@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ML Revision Guide — Unsupervised Learning</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #08090d;
+    --surface: #0f111a;
+    --card: #141721;
+    --border: #1e2233;
+    --accent1: #5b8fff;
+    --accent2: #ff6b6b;
+    --accent3: #43e97b;
+    --accent4: #f7971e;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --highlight: #1a2240;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    line-height: 1.7;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* GRID BACKGROUND */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(91,143,255,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(91,143,255,.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* HERO */
+  .hero {
+    position: relative; z-index: 1;
+    padding: 80px 40px 60px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-badge {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--accent1);
+    border: 1px solid var(--accent1);
+    padding: 4px 14px;
+    border-radius: 20px;
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeUp .6s .2s forwards;
+  }
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(36px, 6vw, 72px);
+    font-weight: 800;
+    line-height: 1.1;
+    opacity: 0;
+    animation: fadeUp .6s .35s forwards;
+  }
+  .hero h1 span { color: var(--accent1); }
+  .hero-sub {
+    font-size: 17px;
+    color: var(--muted);
+    margin-top: 16px;
+    opacity: 0;
+    animation: fadeUp .6s .5s forwards;
+  }
+  .exam-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 28px;
+    background: rgba(255,107,107,.08);
+    border: 1px solid rgba(255,107,107,.3);
+    padding: 8px 20px; border-radius: 8px;
+    color: var(--accent2);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    opacity: 0;
+    animation: fadeUp .6s .65s forwards;
+  }
+  .exam-tag::before { content: '📅'; }
+
+  /* NAV PILLS */
+  .nav-wrap {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(8,9,13,.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 40px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+    overflow-x: auto;
+  }
+  .nav-pill {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .2s;
+    background: none;
+    white-space: nowrap;
+  }
+  .nav-pill:hover, .nav-pill.active {
+    border-color: var(--accent1);
+    color: var(--accent1);
+    background: rgba(91,143,255,.08);
+  }
+
+  /* LAYOUT */
+  .container { max-width: 960px; margin: 0 auto; padding: 60px 40px; position: relative; z-index: 1; }
+
+  /* SECTION */
+  .section { margin-bottom: 80px; }
+  .section-header {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 36px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent1);
+    background: rgba(91,143,255,.1);
+    border: 1px solid rgba(91,143,255,.2);
+    padding: 4px 10px; border-radius: 6px;
+    letter-spacing: 2px;
+  }
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+  }
+  .section-icon { font-size: 28px; }
+
+  /* CARDS */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    transition: border-color .2s;
+  }
+  .card:hover { border-color: rgba(91,143,255,.3); }
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+    font-weight: 400;
+  }
+  .tag-blue { background: rgba(91,143,255,.15); color: var(--accent1); border: 1px solid rgba(91,143,255,.2); }
+  .tag-green { background: rgba(67,233,123,.1); color: var(--accent3); border: 1px solid rgba(67,233,123,.2); }
+  .tag-red { background: rgba(255,107,107,.1); color: var(--accent2); border: 1px solid rgba(255,107,107,.2); }
+  .tag-orange { background: rgba(247,151,30,.1); color: var(--accent4); border: 1px solid rgba(247,151,30,.2); }
+
+  /* CODE BLOCKS */
+  .code-block {
+    background: #0a0c12;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent1);
+    border-radius: 8px;
+    padding: 20px 24px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    overflow-x: auto;
+    margin: 16px 0;
+    position: relative;
+  }
+  .code-block .kw { color: #c792ea; }
+  .code-block .fn { color: #82aaff; }
+  .code-block .st { color: #c3e88d; }
+  .code-block .cm { color: #546e7a; font-style: italic; }
+  .code-block .nm { color: #f78c6c; }
+  .code-block .op { color: #89ddff; }
+  .code-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+
+  /* FORMULA */
+  .formula {
+    background: var(--highlight);
+    border: 1px solid rgba(91,143,255,.2);
+    border-radius: 8px;
+    padding: 16px 24px;
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    text-align: center;
+    color: var(--accent1);
+    margin: 16px 0;
+  }
+
+  /* GRID LAYOUT */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media(max-width: 680px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* ALGO STEPS */
+  .steps { counter-reset: step; list-style: none; padding: 0; }
+  .steps li {
+    counter-increment: step;
+    position: relative;
+    padding: 14px 16px 14px 56px;
+    border-left: 2px solid var(--border);
+    margin-left: 24px;
+    margin-bottom: 4px;
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: -16px;
+    top: 12px;
+    width: 28px; height: 28px;
+    background: var(--accent1);
+    color: var(--bg);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .steps li:last-child { border-color: transparent; }
+
+  /* TABLE */
+  .comp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .comp-table th {
+    background: var(--highlight);
+    padding: 12px 16px;
+    text-align: left;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--accent1);
+    border-bottom: 2px solid var(--border);
+  }
+  .comp-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .comp-table tr:hover td { background: rgba(91,143,255,.03); }
+
+  /* VISUAL CLUSTER DEMO */
+  .cluster-vis {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 20px 0;
+  }
+  .cluster-vis canvas { display: block; margin: 0 auto; border-radius: 8px; }
+
+  /* SCORE METER */
+  .score-bar {
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 8px 0;
+  }
+  .score-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s ease;
+  }
+
+  /* QUIZ SECTION */
+  .quiz-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 16px;
+  }
+  .quiz-q {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+  .quiz-opt {
+    display: block;
+    padding: 10px 16px;
+    margin: 6px 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all .2s;
+    font-size: 14px;
+    background: none;
+    color: var(--text);
+    text-align: left;
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .quiz-opt:hover { border-color: var(--accent1); background: rgba(91,143,255,.05); }
+  .quiz-opt.correct { border-color: var(--accent3); background: rgba(67,233,123,.08); color: var(--accent3); }
+  .quiz-opt.wrong { border-color: var(--accent2); background: rgba(255,107,107,.08); color: var(--accent2); }
+  .quiz-feedback { margin-top: 12px; font-size: 13px; padding: 10px 14px; border-radius: 6px; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.ok { background: rgba(67,233,123,.08); color: var(--accent3); border: 1px solid rgba(67,233,123,.2); }
+  .quiz-feedback.nope { background: rgba(255,107,107,.08); color: var(--accent2); border: 1px solid rgba(255,107,107,.2); }
+
+  /* KEY CONCEPTS */
+  .concept-chip {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    margin: 4px;
+    color: var(--muted);
+    cursor: default;
+    transition: all .2s;
+  }
+  .concept-chip:hover {
+    border-color: var(--accent1);
+    color: var(--accent1);
+    background: rgba(91,143,255,.08);
+  }
+
+  /* CALLOUT */
+  .callout {
+    border-left: 3px solid var(--accent4);
+    background: rgba(247,151,30,.06);
+    padding: 14px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .callout.info { border-color: var(--accent1); background: rgba(91,143,255,.06); }
+  .callout.tip { border-color: var(--accent3); background: rgba(67,233,123,.06); }
+  .callout strong { font-weight: 700; }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in { opacity: 0; transform: translateY(16px); transition: opacity .5s, transform .5s; }
+  .fade-in.visible { opacity: 1; transform: none; }
+
+  /* PROGRESS */
+  .progress-bar {
+    position: fixed; top: 0; left: 0; height: 2px;
+    background: var(--accent1); z-index: 999;
+    transition: width .1s;
+  }
+
+  /* FOOTER */
+  .footer {
+    position: relative; z-index: 1;
+    text-align: center; padding: 40px;
+    border-top: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  ul.styled { list-style: none; padding: 0; }
+  ul.styled li { padding: 5px 0 5px 20px; position: relative; }
+  ul.styled li::before { content: '→'; position: absolute; left: 0; color: var(--accent1); }
+  p { margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progress"></div>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-badge">MACHINE LEARNING · DS PREP</div>
+  <h1>Apprentissage<br><span>Non Supervisé</span></h1>
+  <p class="hero-sub">KMeans · DBSCAN · Elbow · Silhouette · PCA · Réduction de dimensions</p>
+  <div class="exam-tag">DS — 11 Mars 2026</div>
+</header>
+
+<!-- NAV -->
+<nav class="nav-wrap" id="topnav">
+  <button class="nav-pill active" onclick="scrollTo('s0')">Intro</button>
+  <button class="nav-pill" onclick="scrollTo('s1')">KMeans</button>
+  <button class="nav-pill" onclick="scrollTo('s2')">DBSCAN</button>
+  <button class="nav-pill" onclick="scrollTo('s3')">Elbow</button>
+  <button class="nav-pill" onclick="scrollTo('s4')">Silhouette</button>
+  <button class="nav-pill" onclick="scrollTo('s5')">PCA</button>
+  <button class="nav-pill" onclick="scrollTo('s6')">Comparaison</button>
+  <button class="nav-pill" onclick="scrollTo('s7')">Code Complet</button>
+  <button class="nav-pill" onclick="scrollTo('s8')">Quiz</button>
+</nav>
+
+<div class="container">
+
+  <!-- ─── 0. INTRO ─── -->
+  <section class="section fade-in" id="s0">
+    <div class="section-header">
+      <span class="section-num">00</span>
+      <span class="section-icon">🧠</span>
+      <h2 class="section-title">Apprentissage Non Supervisé</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Définition <span class="tag tag-blue">FONDAMENTAL</span></div>
+      <p>L'apprentissage non supervisé est une branche du Machine Learning où l'algorithme apprend à partir de données <strong>sans étiquettes (labels)</strong>. L'objectif est de découvrir une <strong>structure cachée</strong> dans les données.</p>
+      <div class="callout info">
+        <strong>Analogie :</strong> Imagine un tas de pièces de monnaie de différents pays. Tu n'as pas de liste qui dit "celle-ci est française, celle-là est américaine". Mais tu peux les regrouper par taille, couleur et poids. C'est exactement le clustering.
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">✅ Supervisé</div>
+        <ul class="styled">
+          <li>Données avec labels (y)</li>
+          <li>Classification, Régression</li>
+          <li>Évalue sur train/test split</li>
+          <li>Ex: prédire si email = spam</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">🔍 Non Supervisé</div>
+        <ul class="styled">
+          <li>Données <em>sans</em> labels</li>
+          <li>Clustering, Réduction de dims</li>
+          <li>Pas de "bonne réponse"</li>
+          <li>Ex: segmenter des clients</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🗺️ Vue d'ensemble du pipeline</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <span style="background:rgba(91,143,255,.1);border:1px solid rgba(91,143,255,.3);padding:8px 16px;border-radius:8px;font-family:'DM Mono',monospace;font-size:12px;">Données brutes</span>
+        <span style="color:var(--muted)">→</span>
+        <span style="background:rgba(247,151,30,.1);border:1px solid rgba(247,151,30,.3);padding:8px 16px;border-radius:8px;font-family:'DM Mono',monospace;font-size:12px;">Nettoyage + Scaling</span>
+        <span style="color:var(--muted)">→</span>
+        <span style="background:rgba(67,233,123,.1);border:1px solid rgba(67,233,123,.3);padding:8px 16px;border-radius:8px;font-family:'DM Mono',monospace;font-size:12px;">PCA (visualisation)</span>
+        <span style="color:var(--muted)">→</span>
+        <span style="background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);padding:8px 16px;border-radius:8px;font-family:'DM Mono',monospace;font-size:12px;">KMeans / DBSCAN</span>
+        <span style="color:var(--muted)">→</span>
+        <span style="background:rgba(91,143,255,.1);border:1px solid rgba(91,143,255,.3);padding:8px 16px;border-radius:8px;font-family:'DM Mono',monospace;font-size:12px;">Évaluation</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 1. KMEANS ─── -->
+  <section class="section fade-in" id="s1">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <span class="section-icon">⚙️</span>
+      <h2 class="section-title">KMeans Clustering</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Comment ça marche ? <span class="tag tag-blue">ALGO</span></div>
+      <p>KMeans divise les données en <strong>K groupes (clusters)</strong> en minimisant la distance entre chaque point et son centroïde (centre du cluster).</p>
+      <ol class="steps">
+        <li><strong>Initialisation :</strong> Choisir K centroïdes aléatoirement (ou avec KMeans++)</li>
+        <li><strong>Attribution :</strong> Assigner chaque point au centroïde le plus proche (distance euclidienne)</li>
+        <li><strong>Mise à jour :</strong> Déplacer chaque centroïde vers la moyenne de ses points</li>
+        <li><strong>Répéter</strong> les étapes 2-3 jusqu'à convergence (les centroïdes ne bougent plus)</li>
+      </ol>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📐 Inertie</div>
+        <p>Somme des distances au carré de chaque point à son centroïde. C'est la fonction à <strong>minimiser</strong>.</p>
+        <div class="formula">Inertie = Σ ||xᵢ − μₖ||²</div>
+        <p style="font-size:13px;color:var(--muted)">μₖ = centroïde du cluster k</p>
+      </div>
+      <div class="card">
+        <div class="card-title">⚠️ Limites</div>
+        <ul class="styled">
+          <li>Il faut choisir K à l'avance</li>
+          <li>Sensible aux outliers</li>
+          <li>Suppose des clusters sphériques</li>
+          <li>Résultat peut varier (random init)</li>
+        </ul>
+        <div class="callout" style="margin-top:12px;">
+          <strong>Conseil :</strong> Toujours utiliser <code>n_init=10</code> et <code>random_state=42</code> pour la reproductibilité.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="code-label">PYTHON — KMEANS COMPLET</div>
+      <div class="code-block"><span class="kw">from</span> sklearn.cluster <span class="kw">import</span> <span class="fn">KMeans</span>
+<span class="kw">from</span> sklearn.metrics <span class="kw">import</span> <span class="fn">silhouette_score</span>
+
+<span class="cm"># Appliquer KMeans avec K=3</span>
+kmeans = <span class="fn">KMeans</span>(n_clusters=<span class="nm">3</span>, random_state=<span class="nm">42</span>, n_init=<span class="nm">10</span>)
+kmeans_labels = kmeans.<span class="fn">fit_predict</span>(x_scaled)
+
+<span class="cm"># Évaluer</span>
+<span class="fn">print</span>(<span class="st">f"Inertie: {kmeans.inertia_:.2f}"</span>)
+<span class="fn">print</span>(<span class="st">f"Silhouette: {silhouette_score(x_scaled, kmeans_labels):.4f}"</span>)
+
+<span class="cm"># Accéder aux centroïdes</span>
+centroids = kmeans.cluster_centers_  <span class="cm"># shape: (K, n_features)</span></div>
+    </div>
+
+    <div class="callout tip">
+      <strong>💡 À l'examen :</strong> KMeans est <strong>sensible à l'échelle</strong> des features. C'est pourquoi on applique <code>StandardScaler</code> AVANT. Sans scaling, une feature avec de grandes valeurs (ex: balance en milliers) dominera le calcul des distances.
+    </div>
+  </section>
+
+  <!-- ─── 2. DBSCAN ─── -->
+  <section class="section fade-in" id="s2">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <span class="section-icon">🔵</span>
+      <h2 class="section-title">DBSCAN</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Density-Based Spatial Clustering <span class="tag tag-green">DENSITÉ</span></div>
+      <p>DBSCAN groupe les points qui sont <strong>densément regroupés</strong>. Contrairement à KMeans, il trouve automatiquement le nombre de clusters et peut identifier les <strong>outliers (bruit)</strong>.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🔧 Paramètres clés</div>
+        <div style="margin:12px 0">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong>eps</strong>
+            <span class="tag tag-blue">rayon de voisinage</span>
+          </div>
+          <p style="font-size:13px;margin-top:6px;color:var(--muted)">Distance maximale entre deux points pour être "voisins". Trop petit → tout est bruit. Trop grand → tout est un seul cluster.</p>
+        </div>
+        <div style="margin:12px 0">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong>min_samples</strong>
+            <span class="tag tag-green">densité minimale</span>
+          </div>
+          <p style="font-size:13px;margin-top:6px;color:var(--muted)">Nombre min de points dans le rayon eps pour former un cluster. Règle : <code>min_samples = 2 × n_features</code></p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🏷️ Types de points</div>
+        <ul class="styled">
+          <li><strong style="color:var(--accent3)">Core point</strong> : a ≥ min_samples voisins dans eps</li>
+          <li><strong style="color:var(--accent1)">Border point</strong> : dans le voisinage d'un core point, mais pas core lui-même</li>
+          <li><strong style="color:var(--accent2)">Noise point</strong> : label <code>-1</code>, outlier</li>
+        </ul>
+        <div class="callout" style="margin-top:12px;">
+          <strong>Label -1 = BRUIT.</strong> Ces points ne sont dans aucun cluster.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔍 Trouver les meilleurs paramètres</div>
+      <div class="grid-3" style="margin-top:16px;">
+        <div style="text-align:center;padding:16px;border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:24px;margin-bottom:8px;">📈</div>
+          <strong style="font-family:'Syne',sans-serif;">K-Distance Graph</strong>
+          <p style="font-size:12px;color:var(--muted);margin-top:6px;">Trouver le "coude" → valeur eps</p>
+        </div>
+        <div style="text-align:center;padding:16px;border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:24px;margin-bottom:8px;">📊</div>
+          <strong style="font-family:'Syne',sans-serif;">Silhouette Score</strong>
+          <p style="font-size:12px;color:var(--muted);margin-top:6px;">Tester plusieurs eps, garder le meilleur score</p>
+        </div>
+        <div style="text-align:center;padding:16px;border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:24px;margin-bottom:8px;">🔲</div>
+          <strong style="font-family:'Syne',sans-serif;">Grid Search</strong>
+          <p style="font-size:12px;color:var(--muted);margin-top:6px;">Tester toutes les combinaisons eps × min_samples</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="code-label">PYTHON — DBSCAN COMPLET</div>
+      <div class="code-block"><span class="kw">from</span> sklearn.cluster <span class="kw">import</span> <span class="fn">DBSCAN</span>
+
+<span class="cm"># Règle du pouce : min_samples = 2 × n_features</span>
+min_samples = <span class="nm">2</span> * x_scaled.shape[<span class="nm">1</span>]  <span class="cm"># 2 × 17 = 34</span>
+
+<span class="cm"># Appliquer DBSCAN</span>
+dbscan = <span class="fn">DBSCAN</span>(eps=<span class="nm">2.5</span>, min_samples=min_samples)
+dbscan_labels = dbscan.<span class="fn">fit_predict</span>(x_scaled)
+
+<span class="cm"># Compter clusters et bruit</span>
+n_clusters = <span class="fn">len</span>(<span class="fn">set</span>(dbscan_labels)) - (<span class="nm">1</span> <span class="kw">if</span> <span class="nm">-1</span> <span class="kw">in</span> dbscan_labels <span class="kw">else</span> <span class="nm">0</span>)
+n_noise = <span class="fn">list</span>(dbscan_labels).<span class="fn">count</span>(<span class="nm">-1</span>)
+
+<span class="fn">print</span>(<span class="st">f"Clusters: {n_clusters}, Bruit: {n_noise}"</span>)
+
+<span class="cm"># ⚠️ Silhouette nécessite >= 2 clusters !</span>
+<span class="kw">if</span> n_clusters >= <span class="nm">2</span>:
+    score = <span class="fn">silhouette_score</span>(x_scaled, dbscan_labels)
+    <span class="fn">print</span>(<span class="st">f"Silhouette: {score:.4f}"</span>)</div>
+    </div>
+
+    <div class="callout">
+      <strong>⚠️ Piège fréquent :</strong> Le silhouette score ne peut être calculé que si DBSCAN trouve <strong>au moins 2 clusters</strong> et que <strong>tous les points ne sont pas bruit</strong>. Toujours vérifier avant de calculer !
+    </div>
+  </section>
+
+  <!-- ─── 3. ELBOW ─── -->
+  <section class="section fade-in" id="s3">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <span class="section-icon">📐</span>
+      <h2 class="section-title">Elbow Method</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Principe <span class="tag tag-orange">CHOIX DE K</span></div>
+      <p>L'inertie diminue toujours quand K augmente (plus de clusters = chaque point est plus proche d'un centroïde). On cherche le point où <strong>l'amélioration ralentit significativement</strong> — le "coude".</p>
+    </div>
+
+    <!-- Interactive Elbow Visualization -->
+    <div class="cluster-vis">
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:16px;letter-spacing:2px;">COURBE D'INERTIE — MÉTHODE DU COUDE</div>
+      <canvas id="elbowCanvas" width="860" height="300" style="max-width:100%;"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="code-label">PYTHON — ELBOW METHOD</div>
+      <div class="code-block">k_range = <span class="fn">range</span>(<span class="nm">2</span>, <span class="nm">11</span>)
+inertia = []
+
+<span class="kw">for</span> k <span class="kw">in</span> k_range:
+    kmeans = <span class="fn">KMeans</span>(n_clusters=k, random_state=<span class="nm">42</span>, n_init=<span class="nm">10</span>)
+    kmeans.<span class="fn">fit</span>(x_scaled)
+    inertia.<span class="fn">append</span>(kmeans.inertia_)
+
+plt.<span class="fn">plot</span>(k_range, inertia, marker=<span class="st">'o'</span>)
+plt.<span class="fn">xlabel</span>(<span class="st">'Nombre de clusters (K)'</span>)
+plt.<span class="fn">ylabel</span>(<span class="st">'Inertie'</span>)
+plt.<span class="fn">title</span>(<span class="st">'Elbow Method'</span>)
+plt.<span class="fn">show</span>()</div>
+    </div>
+
+    <div class="callout tip">
+      <strong>💡 Note :</strong> Le coude n'est pas toujours évident. Dans ce cas, combiner avec le <strong>silhouette score</strong> pour prendre la meilleure décision.
+    </div>
+  </section>
+
+  <!-- ─── 4. SILHOUETTE ─── -->
+  <section class="section fade-in" id="s4">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <span class="section-icon">📊</span>
+      <h2 class="section-title">Silhouette Score</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Définition <span class="tag tag-green">ÉVALUATION</span></div>
+      <p>Le silhouette score mesure à quel point un point est bien regroupé avec son cluster par rapport aux clusters voisins. Il varie de <strong>-1 à +1</strong>.</p>
+      <div class="formula">s(i) = (b(i) − a(i)) / max(a(i), b(i))</div>
+      <div class="grid-2" style="margin-top:16px;">
+        <div>
+          <p><strong>a(i)</strong> = distance moyenne entre i et les autres points de <em>son cluster</em> (cohésion)</p>
+        </div>
+        <div>
+          <p><strong>b(i)</strong> = distance moyenne minimale entre i et les points d'un <em>autre cluster</em> (séparation)</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <div class="card" style="border-color:rgba(67,233,123,.3);">
+        <div style="font-size:32px;font-family:'DM Mono',monospace;color:var(--accent3);font-weight:700;">≈ +1</div>
+        <p style="font-size:13px;margin-top:8px;">Point bien dans son cluster, loin des autres. <strong style="color:var(--accent3)">Excellent</strong></p>
+      </div>
+      <div class="card" style="border-color:rgba(247,151,30,.3);">
+        <div style="font-size:32px;font-family:'DM Mono',monospace;color:var(--accent4);font-weight:700;">≈ 0</div>
+        <p style="font-size:13px;margin-top:8px;">Point sur la frontière entre deux clusters. <strong style="color:var(--accent4)">Ambigu</strong></p>
+      </div>
+      <div class="card" style="border-color:rgba(255,107,107,.3);">
+        <div style="font-size:32px;font-family:'DM Mono',monospace;color:var(--accent2);font-weight:700;">≈ -1</div>
+        <p style="font-size:13px;margin-top:8px;">Point mal classifié, devrait être dans un autre cluster. <strong style="color:var(--accent2)">Mauvais</strong></p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="code-label">PYTHON — SILHOUETTE POUR KMEANS</div>
+      <div class="code-block">scores = []
+silhouette_range = <span class="fn">range</span>(<span class="nm">2</span>, <span class="nm">11</span>)
+
+<span class="kw">for</span> k <span class="kw">in</span> silhouette_range:
+    kmeans = <span class="fn">KMeans</span>(n_clusters=k, random_state=<span class="nm">42</span>, n_init=<span class="nm">10</span>)
+    labels = kmeans.<span class="fn">fit_predict</span>(x_scaled)
+    scores.<span class="fn">append</span>(<span class="fn">silhouette_score</span>(x_scaled, labels))
+
+<span class="cm"># Trouver le meilleur K</span>
+best_k = <span class="fn">list</span>(silhouette_range)[np.<span class="fn">argmax</span>(scores)]
+<span class="fn">print</span>(<span class="st">f"Meilleur K: {best_k} (score = {max(scores):.4f})"</span>)</div>
+    </div>
+
+    <div class="callout info">
+      <strong>Silhouette pour DBSCAN :</strong> Même logique, mais attention : calculer seulement si <code>n_clusters >= 2</code>. Les points bruit (label -1) sont inclus dans le calcul.
+    </div>
+  </section>
+
+  <!-- ─── 5. PCA ─── -->
+  <section class="section fade-in" id="s5">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <span class="section-icon">🔻</span>
+      <h2 class="section-title">Réduction de Dimensions · PCA</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Principal Component Analysis <span class="tag tag-blue">VISUALISATION</span></div>
+      <p>Notre dataset a <strong>17 features</strong> (17 dimensions). Il est impossible de visualiser 17 dimensions. PCA réduit à 2D ou 3D en conservant le maximum d'information.</p>
+      <div class="callout info" style="margin-top:16px;">
+        <strong>Analogie :</strong> Projeter une sphère 3D sur un mur. Tu perds une dimension mais tu gardes la forme générale — son "ombre" 2D. PCA trouve la meilleure projection possible.
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📈 Variance expliquée</div>
+        <p>Chaque composante principale capture une portion de la variance totale :</p>
+        <div style="margin-top:12px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+            <span>PC1 (1ère composante)</span><span style="color:var(--accent1)">~26%</span>
+          </div>
+          <div class="score-bar"><div class="score-fill" style="width:26%;background:var(--accent1);"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin:8px 0 4px;">
+            <span>PC2 (2ème composante)</span><span style="color:var(--accent3)">~14%</span>
+          </div>
+          <div class="score-bar"><div class="score-fill" style="width:14%;background:var(--accent3);"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin:8px 0 4px;">
+            <span>Total (PC1+PC2)</span><span style="color:var(--accent4)">~40%</span>
+          </div>
+          <div class="score-bar"><div class="score-fill" style="width:40%;background:var(--accent4);"></div></div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-top:8px;">On perd ~60% d'info. C'est normal pour la visualisation uniquement — on ne clustering pas sur PCA.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">⚠️ PCA vs Clustering</div>
+        <ul class="styled">
+          <li>On <strong>scale</strong> d'abord, puis PCA</li>
+          <li>PCA sert à <strong>visualiser</strong>, pas à clusterer</li>
+          <li>Le clustering se fait sur <code>x_scaled</code> (17D)</li>
+          <li>On projette ensuite les résultats sur PCA pour afficher</li>
+        </ul>
+        <div class="callout" style="margin-top:12px;">
+          <code>kmeans.fit(x_scaled)</code> ← correct<br>
+          <code>kmeans.fit(x_pca)</code> ← perte d'info !
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="code-label">PYTHON — PCA COMPLET</div>
+      <div class="code-block"><span class="kw">from</span> sklearn.decomposition <span class="kw">import</span> <span class="fn">PCA</span>
+
+<span class="cm"># Réduire à 2 dimensions pour visualisation</span>
+pca = <span class="fn">PCA</span>(n_components=<span class="nm">2</span>)
+x_pca = pca.<span class="fn">fit_transform</span>(x_scaled)
+
+<span class="cm"># Variance expliquée</span>
+<span class="fn">print</span>(<span class="st">f"PC1: {pca.explained_variance_ratio_[0]*100:.1f}%"</span>)
+<span class="fn">print</span>(<span class="st">f"PC2: {pca.explained_variance_ratio_[1]*100:.1f}%"</span>)
+<span class="fn">print</span>(<span class="st">f"Total: {sum(pca.explained_variance_ratio_)*100:.1f}%"</span>)
+
+<span class="cm"># Projeter les centroïdes KMeans sur PCA (pour affichage)</span>
+centroids_pca = pca.<span class="fn">transform</span>(kmeans.cluster_centers_)</div>
+    </div>
+  </section>
+
+  <!-- ─── 6. COMPARAISON ─── -->
+  <section class="section fade-in" id="s6">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <span class="section-icon">⚖️</span>
+      <h2 class="section-title">KMeans vs DBSCAN</h2>
+    </div>
+
+    <div class="card">
+      <table class="comp-table">
+        <thead>
+          <tr>
+            <th>CRITÈRE</th>
+            <th style="color:var(--accent1)">KMEANS</th>
+            <th style="color:var(--accent3)">DBSCAN</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Nb de clusters</strong></td>
+            <td>⚠️ À choisir manuellement (K)</td>
+            <td>✅ Découvert automatiquement</td>
+          </tr>
+          <tr>
+            <td><strong>Forme des clusters</strong></td>
+            <td>⚠️ Assume des clusters sphériques</td>
+            <td>✅ N'importe quelle forme</td>
+          </tr>
+          <tr>
+            <td><strong>Outliers / Bruit</strong></td>
+            <td>❌ Tout point assigné à un cluster</td>
+            <td>✅ Points bruit = label -1</td>
+          </tr>
+          <tr>
+            <td><strong>Paramètres</strong></td>
+            <td>K (nombre de clusters)</td>
+            <td>eps + min_samples</td>
+          </tr>
+          <tr>
+            <td><strong>Scalabilité</strong></td>
+            <td>✅ Très rapide sur grands datasets</td>
+            <td>⚠️ Plus lent sur très grands datasets</td>
+          </tr>
+          <tr>
+            <td><strong>Idéal pour</strong></td>
+            <td>Clusters bien séparés et ronds</td>
+            <td>Données avec bruit, formes irrégulières</td>
+          </tr>
+          <tr>
+            <td><strong>Reproductibilité</strong></td>
+            <td>⚠️ Dépend de l'init (random_state)</td>
+            <td>✅ Déterministe</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <strong>💡 Règle d'or à l'examen :</strong> Il n'existe pas de "meilleur" algorithme universel. Le choix dépend des données. Si tu vois des outliers ou des formes irrégulières → DBSCAN. Si les clusters sont compacts et ronds → KMeans.
+    </div>
+  </section>
+
+  <!-- ─── 7. CODE COMPLET ─── -->
+  <section class="section fade-in" id="s7">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <span class="section-icon">💻</span>
+      <h2 class="section-title">Pipeline Complet — À Retenir</h2>
+    </div>
+
+    <div class="card">
+      <div class="code-label">PIPELINE COMPLET DU DS</div>
+      <div class="code-block"><span class="cm"># ──── 1. IMPORTS ────────────────────────────────</span>
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">import</span> matplotlib.pyplot <span class="kw">as</span> plt
+<span class="kw">from</span> sklearn.preprocessing <span class="kw">import</span> <span class="fn">StandardScaler</span>
+<span class="kw">from</span> sklearn.decomposition <span class="kw">import</span> <span class="fn">PCA</span>
+<span class="kw">from</span> sklearn.cluster <span class="kw">import</span> <span class="fn">KMeans</span>, <span class="fn">DBSCAN</span>
+<span class="kw">from</span> sklearn.metrics <span class="kw">import</span> <span class="fn">silhouette_score</span>
+
+<span class="cm"># ──── 2. CHARGEMENT ET NETTOYAGE ─────────────────</span>
+data = pd.<span class="fn">read_csv</span>(<span class="st">'CC GENERAL.csv'</span>)
+data[<span class="st">'MINIMUM_PAYMENTS'</span>] = data[<span class="st">'MINIMUM_PAYMENTS'</span>].<span class="fn">fillna</span>(
+    data[<span class="st">'MINIMUM_PAYMENTS'</span>].<span class="fn">median</span>())
+data[<span class="st">'CREDIT_LIMIT'</span>] = data[<span class="st">'CREDIT_LIMIT'</span>].<span class="fn">fillna</span>(
+    data[<span class="st">'CREDIT_LIMIT'</span>].<span class="fn">median</span>())
+
+<span class="cm"># ──── 3. FEATURES + SCALING ──────────────────────</span>
+x = data.<span class="fn">drop</span>(columns=[<span class="st">'CUST_ID'</span>])   <span class="cm"># supprimer colonne texte</span>
+scaler = <span class="fn">StandardScaler</span>()
+x_scaled = scaler.<span class="fn">fit_transform</span>(x)    <span class="cm"># mean=0, std=1</span>
+
+<span class="cm"># ──── 4. PCA (visualisation seulement) ───────────</span>
+pca = <span class="fn">PCA</span>(n_components=<span class="nm">2</span>)
+x_pca = pca.<span class="fn">fit_transform</span>(x_scaled)
+
+<span class="cm"># ──── 5. ELBOW + SILHOUETTE (trouver K) ──────────</span>
+k_range = <span class="fn">range</span>(<span class="nm">2</span>, <span class="nm">11</span>)
+inertia, sil_scores = [], []
+<span class="kw">for</span> k <span class="kw">in</span> k_range:
+    km = <span class="fn">KMeans</span>(n_clusters=k, random_state=<span class="nm">42</span>, n_init=<span class="nm">10</span>)
+    labels = km.<span class="fn">fit_predict</span>(x_scaled)
+    inertia.<span class="fn">append</span>(km.inertia_)
+    sil_scores.<span class="fn">append</span>(<span class="fn">silhouette_score</span>(x_scaled, labels))
+
+best_k = <span class="fn">list</span>(k_range)[np.<span class="fn">argmax</span>(sil_scores)]
+
+<span class="cm"># ──── 6. KMEANS FINAL ────────────────────────────</span>
+kmeans = <span class="fn">KMeans</span>(n_clusters=best_k, random_state=<span class="nm">42</span>, n_init=<span class="nm">10</span>)
+kmeans_labels = kmeans.<span class="fn">fit_predict</span>(x_scaled)
+
+<span class="cm"># ──── 7. DBSCAN ──────────────────────────────────</span>
+min_samples = <span class="nm">2</span> * x_scaled.shape[<span class="nm">1</span>]  <span class="cm"># 34</span>
+dbscan = <span class="fn">DBSCAN</span>(eps=<span class="nm">2.5</span>, min_samples=min_samples)
+dbscan_labels = dbscan.<span class="fn">fit_predict</span>(x_scaled)
+n_clusters = <span class="fn">len</span>(<span class="fn">set</span>(dbscan_labels)) - (<span class="nm">1</span> <span class="kw">if</span> <span class="nm">-1</span> <span class="kw">in</span> dbscan_labels <span class="kw">else</span> <span class="nm">0</span>)</div>
+    </div>
+
+    <!-- Key facts to remember -->
+    <div class="card" style="margin-top:20px;">
+      <div class="card-title">🎯 Points essentiels à mémoriser</div>
+      <div class="grid-2" style="margin-top:12px;">
+        <div>
+          <p><span class="tag tag-blue">StandardScaler</span></p>
+          <p style="font-size:13px;margin-top:4px;">mean=0, std=1. Obligatoire avant clustering car KMeans est sensible aux distances.</p>
+        </div>
+        <div>
+          <p><span class="tag tag-green">Silhouette Score</span></p>
+          <p style="font-size:13px;margin-top:4px;">Entre -1 et +1. Plus c'est proche de 1, mieux les clusters sont séparés.</p>
+        </div>
+        <div style="margin-top:12px;">
+          <p><span class="tag tag-orange">Elbow Method</span></p>
+          <p style="font-size:13px;margin-top:4px;">L'inertie ↓ quand K ↑. On cherche le "coude" = point d'inflexion.</p>
+        </div>
+        <div style="margin-top:12px;">
+          <p><span class="tag tag-red">DBSCAN label -1</span></p>
+          <p style="font-size:13px;margin-top:4px;">Points bruit = outliers. Pas dans un cluster. Unique à DBSCAN.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 8. QUIZ ─── -->
+  <section class="section fade-in" id="s8">
+    <div class="section-header">
+      <span class="section-num">08</span>
+      <span class="section-icon">🎯</span>
+      <h2 class="section-title">Quiz — Teste tes connaissances</h2>
+    </div>
+
+    <div id="quizContainer"></div>
+    <div style="text-align:center;margin-top:24px;">
+      <div id="quizScore" style="font-family:'DM Mono',monospace;font-size:14px;color:var(--muted);"></div>
+    </div>
+  </section>
+
+  <!-- Keywords -->
+  <section class="section fade-in">
+    <div class="card" style="text-align:center;">
+      <div class="card-title" style="justify-content:center;margin-bottom:16px;">🔑 Mots-clés du DS</div>
+      <div>
+        <span class="concept-chip">KMeans</span>
+        <span class="concept-chip">DBSCAN</span>
+        <span class="concept-chip">PCA</span>
+        <span class="concept-chip">StandardScaler</span>
+        <span class="concept-chip">Inertie</span>
+        <span class="concept-chip">Elbow Method</span>
+        <span class="concept-chip">Silhouette Score</span>
+        <span class="concept-chip">eps</span>
+        <span class="concept-chip">min_samples</span>
+        <span class="concept-chip">Centroïde</span>
+        <span class="concept-chip">Cluster</span>
+        <span class="concept-chip">Noise (-1)</span>
+        <span class="concept-chip">Variance expliquée</span>
+        <span class="concept-chip">fit_predict()</span>
+        <span class="concept-chip">fit_transform()</span>
+        <span class="concept-chip">n_components</span>
+        <span class="concept-chip">Grid Search</span>
+        <span class="concept-chip">K-Distance Graph</span>
+        <span class="concept-chip">Unsupervised</span>
+        <span class="concept-chip">Outliers</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer class="footer">
+  DS Machine Learning · 11 Mars 2026 · Apprentissage Non Supervisé
+</footer>
+
+<script>
+// ─── PROGRESS BAR ───────────────────────────────
+window.addEventListener('scroll', () => {
+  const p = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
+  document.getElementById('progress').style.width = p + '%';
+});
+
+// ─── SCROLL NAV ─────────────────────────────────
+function scrollTo(id) {
+  document.getElementById(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─── INTERSECTION OBSERVER (fade in) ────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+// ─── ELBOW CANVAS ───────────────────────────────
+(function drawElbow() {
+  const canvas = document.getElementById('elbowCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const pad = { l: 60, r: 30, t: 30, b: 50 };
+
+  // Simulated inertia values
+  const ks = [2,3,4,5,6,7,8,9,10];
+  const inertia = [9200, 7400, 6200, 5600, 5300, 5100, 4980, 4900, 4840];
+  const elbowK = 4; // index of elbow
+
+  const minI = Math.min(...inertia), maxI = Math.max(...inertia);
+  const toX = k => pad.l + ((k - 2) / 8) * (W - pad.l - pad.r);
+  const toY = v => H - pad.b - ((v - minI) / (maxI - minI)) * (H - pad.t - pad.b);
+
+  // Background
+  ctx.fillStyle = '#0a0c12';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = '#1e2233'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 5; i++) {
+    const y = H - pad.b - (i / 5) * (H - pad.t - pad.b);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+  }
+
+  // Axes
+  ctx.strokeStyle = '#2d3450'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H - pad.b); ctx.lineTo(W - pad.r, H - pad.b);
+  ctx.stroke();
+
+  // Gradient fill under curve
+  const grad = ctx.createLinearGradient(0, pad.t, 0, H - pad.b);
+  grad.addColorStop(0, 'rgba(91,143,255,0.15)');
+  grad.addColorStop(1, 'rgba(91,143,255,0)');
+  ctx.beginPath();
+  ctx.moveTo(toX(2), H - pad.b);
+  ks.forEach((k, i) => ctx.lineTo(toX(k), toY(inertia[i])));
+  ctx.lineTo(toX(10), H - pad.b);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.strokeStyle = '#5b8fff'; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ks.forEach((k, i) => i === 0 ? ctx.moveTo(toX(k), toY(inertia[i])) : ctx.lineTo(toX(k), toY(inertia[i])));
+  ctx.stroke();
+
+  // Dots
+  ks.forEach((k, i) => {
+    const isElbow = i === elbowK;
+    ctx.beginPath();
+    ctx.arc(toX(k), toY(inertia[i]), isElbow ? 7 : 4, 0, Math.PI * 2);
+    ctx.fillStyle = isElbow ? '#ff6b6b' : '#5b8fff';
+    ctx.fill();
+    if (isElbow) {
+      ctx.strokeStyle = 'rgba(255,107,107,0.4)'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(toX(k), toY(inertia[i]), 14, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  });
+
+  // Elbow annotation
+  const ex = toX(ks[elbowK]), ey = toY(inertia[elbowK]);
+  ctx.strokeStyle = 'rgba(255,107,107,0.5)'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex, H - pad.b); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#ff6b6b';
+  ctx.font = '12px "DM Mono", monospace';
+  ctx.fillText('← COUDE (K=6)', ex + 8, ey - 10);
+
+  // Axis labels
+  ctx.fillStyle = '#64748b'; ctx.font = '11px "DM Mono", monospace';
+  ks.forEach(k => {
+    ctx.fillText(k, toX(k) - 4, H - pad.b + 18);
+  });
+  ctx.fillText('Nombre de clusters (K)', W / 2 - 60, H - 8);
+
+  // Y label
+  ctx.save();
+  ctx.translate(16, H / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('Inertie', -24, 0);
+  ctx.restore();
+})();
+
+// ─── QUIZ ───────────────────────────────────────
+const questions = [
+  {
+    q: "Quelle est la différence principale entre apprentissage supervisé et non supervisé ?",
+    opts: [
+      "Le non supervisé utilise des réseaux de neurones",
+      "Le non supervisé n'utilise pas de labels (étiquettes)",
+      "Le non supervisé est toujours plus précis",
+      "Le supervisé ne nécessite pas de données"
+    ],
+    correct: 1,
+    expl: "✅ Exact ! L'apprentissage non supervisé découvre des structures dans les données SANS labels. C'est la définition fondamentale."
+  },
+  {
+    q: "Pourquoi applique-t-on StandardScaler avant KMeans ?",
+    opts: [
+      "Pour réduire le nombre de features",
+      "Pour rendre les données non nulles",
+      "Parce que KMeans utilise des distances et est sensible à l'échelle",
+      "Pour améliorer la visualisation PCA"
+    ],
+    correct: 2,
+    expl: "✅ Correct ! KMeans calcule des distances euclidiennes. Sans scaling, une feature avec de grandes valeurs (ex: 10000 euros) dominerait les distances."
+  },
+  {
+    q: "Que représente le label -1 dans DBSCAN ?",
+    opts: [
+      "Le premier cluster créé",
+      "Un point non encore assigné",
+      "Un point bruit (outlier)",
+      "Une erreur d'algorithme"
+    ],
+    correct: 2,
+    expl: "✅ Oui ! Label -1 = bruit (noise). Ces points ne sont dans aucun cluster — c'est un avantage unique de DBSCAN."
+  },
+  {
+    q: "Qu'est-ce que l'inertie dans KMeans ?",
+    opts: [
+      "Le nombre total de clusters trouvés",
+      "La somme des distances au carré de chaque point à son centroïde",
+      "La vitesse de convergence de l'algorithme",
+      "Le score de séparation des clusters"
+    ],
+    correct: 1,
+    expl: "✅ L'inertie = Σ ||xᵢ − μₖ||². Plus elle est faible, plus les points sont proches de leur centroïde. KMeans cherche à la minimiser."
+  },
+  {
+    q: "Un silhouette score de 0.85 signifie :",
+    opts: [
+      "Les clusters se chevauchent beaucoup",
+      "85% des points sont du bruit",
+      "Les clusters sont bien séparés et cohésifs",
+      "K est trop grand"
+    ],
+    correct: 2,
+    expl: "✅ Parfait ! Un score proche de +1 (comme 0.85) indique que les points sont bien dans leur cluster et loin des autres clusters."
+  },
+  {
+    q: "Pour utiliser PCA pour visualiser des données à 17 dimensions, on met n_components = ?",
+    opts: ["17", "1", "2", "auto"],
+    correct: 2,
+    expl: "✅ On choisit n_components=2 pour réduire à 2D et pouvoir afficher sur un graphe (axe x, axe y)."
+  },
+  {
+    q: "Dans la méthode du coude (Elbow Method), que cherche-t-on ?",
+    opts: [
+      "Le K avec l'inertie la plus faible possible",
+      "Le K avec le silhouette score le plus élevé",
+      "Le point d'inflexion où l'inertie cesse de diminuer fortement",
+      "Le K au milieu de la courbe"
+    ],
+    correct: 2,
+    expl: "✅ Exact ! L'inertie ↓ toujours avec K. On cherche le 'coude' — le point après lequel ajouter des clusters n'améliore plus beaucoup."
+  },
+  {
+    q: "Quelle règle utilise-t-on pour choisir min_samples dans DBSCAN ?",
+    opts: [
+      "min_samples = nombre de lignes / 100",
+      "min_samples = 2 × nombre de features",
+      "min_samples = K optimal de KMeans",
+      "min_samples = 10 toujours"
+    ],
+    correct: 1,
+    expl: "✅ La règle empirique : min_samples = 2 × n_features. Avec 17 features → min_samples = 34."
+  }
+];
+
+let answered = 0, correct = 0;
+const qc = document.getElementById('quizContainer');
+
+questions.forEach((q, qi) => {
+  const div = document.createElement('div');
+  div.className = 'quiz-card fade-in';
+  div.innerHTML = `
+    <div class="quiz-q">${qi+1}. ${q.q}</div>
+    ${q.opts.map((o,oi) => `<button class="quiz-opt" onclick="answer(${qi},${oi})" id="opt-${qi}-${oi}">${o}</button>`).join('')}
+    <div class="quiz-feedback" id="fb-${qi}"></div>
+  `;
+  qc.appendChild(div);
+  observer.observe(div);
+});
+
+window.answer = function(qi, chosen) {
+  const q = questions[qi];
+  if (document.getElementById(`fb-${qi}`).classList.contains('show')) return;
+  answered++;
+  const isOk = chosen === q.correct;
+  if (isOk) correct++;
+
+  for (let i = 0; i < q.opts.length; i++) {
+    const btn = document.getElementById(`opt-${qi}-${i}`);
+    btn.disabled = true;
+    if (i === q.correct) btn.classList.add('correct');
+    else if (i === chosen && !isOk) btn.classList.add('wrong');
+  }
+
+  const fb = document.getElementById(`fb-${qi}`);
+  fb.textContent = isOk ? q.expl : `❌ ${q.expl}`;
+  fb.className = `quiz-feedback show ${isOk ? 'ok' : 'nope'}`;
+
+  document.getElementById('quizScore').textContent =
+    `Score : ${correct} / ${answered} réponses données`;
+};
+</script>
+</body>
+</html>
