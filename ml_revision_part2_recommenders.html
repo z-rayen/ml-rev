@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ML Révision — Systèmes de Recommandation</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@300;400;500&family=Nunito:ital,wght@0,300;0,400;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #070810;
+  --surface: #0d0f1c;
+  --card: #111425;
+  --card2: #161a2e;
+  --border: #1c2038;
+  --a1: #7c6af7;   /* purple */
+  --a2: #f76c6c;   /* red */
+  --a3: #3de8a0;   /* green */
+  --a4: #f7c948;   /* yellow */
+  --a5: #38bdf8;   /* cyan */
+  --text: #dde4f5;
+  --muted: #5a6485;
+  --hl: #161d3a;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Nunito',sans-serif;font-weight:300;line-height:1.75;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;
+  background-image:radial-gradient(circle at 20% 20%,rgba(124,106,247,.06) 0%,transparent 50%),
+    radial-gradient(circle at 80% 80%,rgba(61,232,160,.05) 0%,transparent 50%),
+    linear-gradient(rgba(124,106,247,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(124,106,247,.025) 1px,transparent 1px);
+  background-size:100% 100%,100% 100%,44px 44px,44px 44px;
+  pointer-events:none;
+}
+
+/* ── PROGRESS ── */
+#prog{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--a1),var(--a3));z-index:999;transition:width .1s;}
+
+/* ── HERO ── */
+.hero{
+  position:relative;z-index:1;
+  padding:90px 40px 70px;text-align:center;
+  border-bottom:1px solid var(--border);
+}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:3px;
+  color:var(--a1);border:1px solid rgba(124,106,247,.3);
+  padding:5px 16px;border-radius:20px;margin-bottom:28px;
+  background:rgba(124,106,247,.07);
+  opacity:0;animation:up .6s .1s forwards;
+}
+.hero h1{
+  font-family:'Syne',sans-serif;font-size:clamp(38px,6vw,76px);font-weight:800;line-height:1.05;
+  opacity:0;animation:up .6s .25s forwards;
+}
+.hero h1 em{font-style:normal;color:var(--a1);}
+.hero h1 strong{
+  background:linear-gradient(135deg,var(--a3),var(--a5));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hero-sub{font-size:16px;color:var(--muted);margin-top:16px;opacity:0;animation:up .6s .4s forwards;}
+.hero-tags{margin-top:28px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;opacity:0;animation:up .6s .55s forwards;}
+.htag{
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  padding:6px 16px;border-radius:6px;border:1px solid var(--border);color:var(--muted);
+}
+
+/* ── NAV ── */
+.nav{
+  position:sticky;top:0;z-index:100;
+  background:rgba(7,8,16,.88);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:10px 40px;display:flex;gap:6px;overflow-x:auto;
+}
+.npill{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  padding:5px 14px;border-radius:20px;border:1px solid var(--border);
+  color:var(--muted);background:none;cursor:pointer;white-space:nowrap;
+  transition:all .2s;
+}
+.npill:hover,.npill.on{border-color:var(--a1);color:var(--a1);background:rgba(124,106,247,.09);}
+
+/* ── LAYOUT ── */
+.wrap{max-width:980px;margin:0 auto;padding:70px 40px;position:relative;z-index:1;}
+.sec{margin-bottom:90px;}
+.sec-hd{
+  display:flex;align-items:center;gap:14px;
+  margin-bottom:34px;padding-bottom:18px;border-bottom:1px solid var(--border);
+}
+.sec-n{
+  font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--a1);
+  background:rgba(124,106,247,.1);border:1px solid rgba(124,106,247,.2);
+  padding:3px 10px;border-radius:5px;letter-spacing:2px;
+}
+.sec-ico{font-size:26px;}
+.sec-ttl{font-family:'Syne',sans-serif;font-size:28px;font-weight:700;}
+
+/* ── CARD ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:26px 30px;margin-bottom:18px;transition:border-color .2s;}
+.card:hover{border-color:rgba(124,106,247,.25);}
+.card-ttl{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+@media(max-width:680px){.g2,.g3{grid-template-columns:1fr;}}
+
+/* ── TAGS ── */
+.tag{font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 9px;border-radius:4px;letter-spacing:.5px;}
+.tp{background:rgba(124,106,247,.13);color:var(--a1);border:1px solid rgba(124,106,247,.2);}
+.tg{background:rgba(61,232,160,.1);color:var(--a3);border:1px solid rgba(61,232,160,.2);}
+.tr{background:rgba(247,108,108,.1);color:var(--a2);border:1px solid rgba(247,108,108,.2);}
+.ty{background:rgba(247,201,72,.1);color:var(--a4);border:1px solid rgba(247,201,72,.2);}
+.tc{background:rgba(56,189,248,.1);color:var(--a5);border:1px solid rgba(56,189,248,.2);}
+
+/* ── CODE ── */
+.code{
+  background:#060810;border:1px solid var(--border);border-left:3px solid var(--a1);
+  border-radius:8px;padding:20px 22px;font-family:'JetBrains Mono',monospace;font-size:12.5px;
+  line-height:1.85;overflow-x:auto;margin:14px 0;position:relative;
+}
+.clabel{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px;}
+.kw{color:#c084fc;} .fn{color:#7dd3fc;} .st{color:#86efac;} .cm{color:#374151;font-style:italic;} .nm{color:#fb923c;} .op{color:#f0abfc;}
+
+/* ── CALLOUT ── */
+.co{border-left:3px solid var(--a4);background:rgba(247,201,72,.05);padding:13px 18px;border-radius:0 8px 8px 0;margin:14px 0;font-size:13.5px;}
+.co.info{border-color:var(--a1);background:rgba(124,106,247,.06);}
+.co.tip{border-color:var(--a3);background:rgba(61,232,160,.06);}
+.co.danger{border-color:var(--a2);background:rgba(247,108,108,.06);}
+.co strong{font-weight:700;}
+
+/* ── FORMULA ── */
+.form{
+  background:var(--hl);border:1px solid rgba(124,106,247,.25);
+  border-radius:8px;padding:14px 22px;font-family:'JetBrains Mono',monospace;
+  font-size:13px;text-align:center;color:var(--a1);margin:14px 0;
+}
+
+/* ── STEPS ── */
+.steps{list-style:none;counter-reset:s;padding:0;}
+.steps li{
+  counter-increment:s;position:relative;
+  padding:12px 14px 12px 52px;border-left:2px solid var(--border);
+  margin-left:22px;margin-bottom:2px;font-size:14px;
+}
+.steps li::before{
+  content:counter(s);position:absolute;left:-14px;top:10px;
+  width:26px;height:26px;border-radius:50%;
+  background:var(--a1);color:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;
+}
+.steps li:last-child{border-color:transparent;}
+
+/* ── UL ── */
+ul.ul{list-style:none;padding:0;}
+ul.ul li{padding:4px 0 4px 20px;position:relative;font-size:14px;}
+ul.ul li::before{content:'→';position:absolute;left:0;color:var(--a1);}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.tbl th{background:var(--hl);padding:11px 14px;text-align:left;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--a1);border-bottom:2px solid var(--border);}
+.tbl td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:top;}
+.tbl tr:hover td{background:rgba(124,106,247,.03);}
+
+/* ── PIPELINE DIAGRAM ── */
+.pipe{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:16px 0;}
+.pstep{
+  background:var(--hl);border:1px solid rgba(124,106,247,.25);
+  padding:8px 16px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px;
+  color:var(--a5);white-space:nowrap;
+}
+.parrow{color:var(--muted);font-size:18px;}
+
+/* ── DIAGRAM SVG AREA ── */
+.diag{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin:18px 0;}
+
+/* ── QUIZ ── */
+.qcard{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:26px 30px;margin-bottom:14px;}
+.qq{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:14px;}
+.qopt{
+  display:block;width:100%;padding:9px 14px;margin:5px 0;
+  border:1px solid var(--border);border-radius:7px;
+  cursor:pointer;background:none;color:var(--text);text-align:left;
+  font-family:'Nunito',sans-serif;font-size:13px;transition:all .2s;
+}
+.qopt:hover{border-color:var(--a1);background:rgba(124,106,247,.06);}
+.qopt.ok{border-color:var(--a3);background:rgba(61,232,160,.07);color:var(--a3);}
+.qopt.no{border-color:var(--a2);background:rgba(247,108,108,.07);color:var(--a2);}
+.qfb{display:none;margin-top:10px;font-size:13px;padding:10px 14px;border-radius:7px;}
+.qfb.show{display:block;}
+.qfb.ok{background:rgba(61,232,160,.07);color:var(--a3);border:1px solid rgba(61,232,160,.2);}
+.qfb.no{background:rgba(247,108,108,.07);color:var(--a2);border:1px solid rgba(247,108,108,.2);}
+
+/* ── SCORE BAR ── */
+.sbar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin:6px 0;}
+.sfill{height:100%;border-radius:3px;}
+
+/* ── CHIP ── */
+.chip{
+  display:inline-block;padding:5px 13px;border-radius:20px;
+  border:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:11px;
+  margin:3px;color:var(--muted);cursor:default;transition:all .2s;
+}
+.chip:hover{border-color:var(--a1);color:var(--a1);background:rgba(124,106,247,.07);}
+
+/* ── BADGE COMPARE ── */
+.badge{
+  display:inline-block;padding:3px 10px;border-radius:4px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+}
+
+/* ── ANIM ── */
+@keyframes up{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:none;}}
+.fi{opacity:0;transform:translateY(14px);transition:opacity .5s,transform .5s;}
+.fi.vis{opacity:1;transform:none;}
+
+/* ── FOOTER ── */
+footer{position:relative;z-index:1;text-align:center;padding:40px;border-top:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
+
+p{margin-bottom:10px;}
+</style>
+</head>
+<body>
+<div id="prog"></div>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-eyebrow">🎓 MACHINE LEARNING · PARTIE II</div>
+  <h1>Systèmes de<br><em>Recommandation</em><br><strong>& Clustering</strong></h1>
+  <p class="hero-sub">Simple · Content-Based · Collaborative Filtering · TF-IDF · Cosine Similarity</p>
+  <div class="hero-tags">
+    <span class="htag">pandas</span>
+    <span class="htag">sklearn</span>
+    <span class="htag">numpy</span>
+    <span class="htag">cosine_similarity</span>
+    <span class="htag">TfidfVectorizer</span>
+    <span class="htag">MultiLabelBinarizer</span>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav" id="topnav">
+  <button class="npill on" onclick="go('s0')">Vue d'ensemble</button>
+  <button class="npill" onclick="go('s1')">Simple RS</button>
+  <button class="npill" onclick="go('s2')">Content-Based</button>
+  <button class="npill" onclick="go('s3')">TF-IDF</button>
+  <button class="npill" onclick="go('s4')">User Profile</button>
+  <button class="npill" onclick="go('s5')">Multi-features</button>
+  <button class="npill" onclick="go('s6')">Collaborative</button>
+  <button class="npill" onclick="go('s7')">Cosine Sim</button>
+  <button class="npill" onclick="go('s8')">Pipeline Complet</button>
+  <button class="npill" onclick="go('s9')">Quiz</button>
+</nav>
+
+<div class="wrap">
+
+<!-- ═══════════════════════════════════════════════════
+     0 · VUE D'ENSEMBLE
+══════════════════════════════════════════════════════ -->
+<section class="sec fi" id="s0">
+  <div class="sec-hd">
+    <span class="sec-n">00</span>
+    <span class="sec-ico">🗺️</span>
+    <h2 class="sec-ttl">Vue d'ensemble — Systèmes de Recommandation</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-ttl">Qu'est-ce qu'un système de recommandation ? <span class="tag tp">DÉFINITION</span></div>
+    <p>Un système de recommandation prédit ce qu'un utilisateur aimerait voir ou acheter, en se basant sur ses préférences passées et/ou sur celles d'autres utilisateurs similaires.</p>
+    <div class="co info"><strong>Exemples réels :</strong> Netflix ("Films recommandés pour toi"), Amazon ("Les clients ont aussi acheté"), Spotify ("Discover Weekly"), YouTube (suggestions de vidéos).</div>
+  </div>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(247,201,72,.3);">
+      <div style="font-size:28px;margin-bottom:8px;">📈</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px;">Simple / Popularity</div>
+      <p style="font-size:13px;">Recommande les items les plus populaires. Ne personnalise pas. Formule IMDB.</p>
+    </div>
+    <div class="card" style="border-color:rgba(124,106,247,.3);">
+      <div style="font-size:28px;margin-bottom:8px;">🎬</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px;">Content-Based</div>
+      <p style="font-size:13px;">Recommande des items similaires à ce que l'utilisateur a aimé. Basé sur les attributs des items.</p>
+    </div>
+    <div class="card" style="border-color:rgba(61,232,160,.3);">
+      <div style="font-size:28px;margin-bottom:8px;">👥</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:6px;">Collaborative Filtering</div>
+      <p style="font-size:13px;">Recommande en se basant sur des utilisateurs similaires. "Les gens comme toi ont aimé..."</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:8px;">
+    <div class="card-ttl">📊 Comparaison rapide</div>
+    <table class="tbl">
+      <thead><tr><th>TYPE</th><th>DONNÉES UTILISÉES</th><th>PERSONNALISÉ ?</th><th>PROBLÈME PRINCIPAL</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge ty">Simple</span></td><td>Votes, popularité globale</td><td>❌ Non</td><td>Même recommandation pour tout le monde</td></tr>
+        <tr><td><span class="badge tp">Content-Based</span></td><td>Attributs des items (genre, description)</td><td>✅ Oui</td><td>Manque de diversité (filtre-bulle)</td></tr>
+        <tr><td><span class="badge tg">Collaborative</span></td><td>Historique de notes des utilisateurs</td><td>✅ Oui</td><td>Cold start (nouvel utilisateur/item)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     1 · SIMPLE RECOMMENDER
+══════════════════════════════════════════════════════ -->
+<section class="sec fi" id="s1">
+  <div class="sec-hd">
+    <span class="sec-n">01</span>
+    <span class="sec-ico">📈</span>
+    <h2 class="sec-ttl">Simple Recommender — Formule IMDB</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-ttl">Problème avec la moyenne brute <span class="tag tr">PIÈGE EXAMEN</span></div>
+    <p>Un film avec <strong>5 votes à 10/10</strong> aurait un score parfait, alors qu'un film avec <strong>10 000 votes à 8.5/10</strong> est probablement bien meilleur. La moyenne brute est trompeuse.</p>
+    <div class="co danger"><strong>Solution :</strong> La formule IMDB pondère le score par rapport au nombre de votes et à la moyenne globale.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-ttl">📐 Formule IMDB Weighted Rating</div>
+    <div class="form">score = (v / (v + m)) × R + (m / (v + m)) × C</div>
+    <div class="g2" style="margin-top:14px;">
+      <div>
+        <ul class="ul">
+          <li><strong>v</strong> = vote_count du film</li>
+          <li><strong>m</strong> = seuil minimum de votes (ex: quantile 70%)</li>
+        </ul>
+      </div>
+      <div>
+        <ul class="ul">
+          <li><strong>R</strong> = vote_average du film</li>
+          <li><strong>C</strong> = moyenne globale de tous les films</li>
+        </ul>
+      </div>
+    </div>
+    <div class="co tip" style="margin-top:12px;">
+      <strong>Intuition :</strong> Si v est petit → le score tend vers C (la moyenne globale). Si v est grand → le score tend vers R (le vrai score du film). Le film doit "mériter" son score avec suffisamment de votes.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="clabel">PYTHON — SIMPLE RECOMMENDER (IMDB)</div>
+    <div class="code"><span class="cm"># 1. Filtrer les films trop courts ou trop longs</span>
+data = data.loc[(data[<span class="st">'runtime'</span>] >= <span class="nm">50</span>) & (data[<span class="st">'runtime'</span>] < <span class="nm">300</span>)]
+
+<span class="cm"># 2. Seuil minimum de votes (quantile 70%) → exclure les films peu connus</span>
+m = data[<span class="st">'vote_count'</span>].<span class="fn">quantile</span>(<span class="nm">0.7</span>)
+data = data.loc[data[<span class="st">'vote_count'</span>] > m]
+
+<span class="cm"># 3. Moyenne globale de vote_average</span>
+C = data[<span class="st">'vote_average'</span>].<span class="fn">mean</span>()
+
+<span class="cm"># 4. Définir la fonction IMDB</span>
+<span class="kw">def</span> <span class="fn">IMDB_score</span>(data, m=m, C=C):
+    R = data.vote_average
+    v = data.vote_count
+    <span class="kw">return</span> ((v / (v + m)) * R) + ((m / (v + m)) * C)
+
+<span class="cm"># 5. Appliquer et trier</span>
+data[<span class="st">'score_imdb'</span>] = data.<span class="fn">apply</span>(IMDB_score, axis=<span class="nm">1</span>)
+data.<span class="fn">sort_values</span>(by=<span class="st">'score_imdb'</span>, ascending=<span class="nm">False</span>).head(<span class="nm">10</span>)</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     2 · CONTENT-BASED
+══════════════════════════════════════════════════════ -->
+<section class="sec fi" id="s2">
+  <div class="sec-hd">
+    <span class="sec-n">02</span>
+    <span class="sec-ico">🎬</span>
+    <h2 class="sec-ttl">Content-Based Filtering</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-ttl">Principe <span class="tag tp">CONCEPT CLÉ</span></div>
+    <p>On crée un <strong>profil utilisateur</strong> à partir des items qu'il a aimés. Ensuite, on recommande les items les plus <strong>similaires</strong> à ce profil.</p>
+    <div class="pipe">
+      <div class="pstep">Items regardés</div><div class="parrow">→</div>
+      <div class="pstep">Encodage (genre/texte)</div><div class="parrow">→</div>
+      <div class="pstep">User Profile (moyenne)</div><div class="parrow">→</div>
+      <div class="pstep">Cosine Similarity</div><div class="parrow">→</div>
+      <div class="pstep">Top-N recommandations</div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-ttl">🏷️ MultiLabelBinarizer <span class="tag tg">OUTIL</span></div>
+      <p style="font-size:13px;">Transforme une liste de genres en vecteur binaire one-hot.</p>
+      <div class="code" style="font-size:11.5px;"><span class="cm"># Entrée : ['Action', 'Comedy']</span>
+<span class="cm"># Sortie : [1, 0, 1, 0, 0, ...]</span>
+
+<span class="kw">from</span> sklearn.preprocessing <span class="kw">import</span> <span class="fn">MultiLabelBinarizer</span>
+
+mlb = <span class="fn">MultiLabelBinarizer</span>()
+<span class="cm"># fit_transform sur la liste de genres</span>
+genres_onehot = mlb.<span class="fn">fit_transform</span>(data[<span class="st">'genre_names'</span>])</div>
+    </div>
+    <div class="card">
+      <div class="card-ttl">⚙️ Pipeline Genres</div>
+      <ol class="steps" style="font-size:13px;">
+        <li>Extraire genres depuis JSON : <code>eval(x)</code></li>
+        <li>Extraire noms : <code>[d['name'] for d in x]</code></li>
+        <li>Nettoyer (retirer studios)</li>
+        <li>MultiLabelBinarizer → one-hot</li>
+        <li>Créer user profile (mean)</li>
+        <li>Cosine similarity → tri</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="clabel">PYTHON — CONTENT-BASED (GENRES)</div>
+    <div class="code"><span class="cm"># ── Extraction des genres ──────────────────────────</span>
+data[<span class="st">'genre_list'</span>] = data[<span class="st">'genres'</span>].<span class="fn">apply</span>(<span class="kw">lambda</span> x: <span class="fn">eval</span>(x))
+data[<span class="st">'genre_names'</span>] = data[<span class="st">'genre_list'</span>].<span class="fn">apply</span>(<span class="kw">lambda</span> x: [d[<span class="st">'name'</span>] <span class="kw">for</span> d <span class="kw">in</span> x])
+
+<span class="cm"># ── Nettoyage : supprimer les studios mal classifiés ──</span>
+bad = [<span class="st">'The Cartel'</span>, <span class="st">'Aniplex'</span>, <span class="st">'GoHands'</span>]  <span class="cm"># etc.</span>
+data[<span class="st">'genre_names'</span>] = data[<span class="st">'genre_names'</span>].<span class="fn">apply</span>(
+    <span class="kw">lambda</span> x: [g <span class="kw">for</span> g <span class="kw">in</span> x <span class="kw">if</span> g <span class="kw">not</span> <span class="kw">in</span> bad])
+
+<span class="cm"># ── Encodage one-hot ────────────────────────────────</span>
+mlb = <span class="fn">MultiLabelBinarizer</span>()
+genres_onehot = mlb.<span class="fn">fit_transform</span>(data[<span class="st">'genre_names'</span>])
+
+<span class="cm"># ── Films vus par l'utilisateur ─────────────────────</span>
+user_watched = [<span class="st">'49026'</span>, <span class="st">'99861'</span>, <span class="st">'293660'</span>]
+user_watch_list = data.loc[data[<span class="st">'id'</span>].<span class="fn">isin</span>(user_watched)]
+
+<span class="cm"># ── Profil utilisateur = moyenne des genres vus ──────</span>
+user_profile = user_watch_list[mlb.classes_].<span class="fn">mean</span>()
+user_profile = user_profile.values.<span class="fn">reshape</span>(<span class="nm">1</span>, -<span class="nm">1</span>)
+
+<span class="cm"># ── Cosine Similarity ───────────────────────────────</span>
+<span class="kw">from</span> sklearn.metrics.pairwise <span class="kw">import</span> <span class="fn">cosine_similarity</span>
+
+cosine_score = <span class="fn">cosine_similarity</span>(genres_onehot, user_profile)
+data[<span class="st">'score'</span>] = cosine_score.<span class="fn">flatten</span>()
+
+<span class="cm"># ── Top 10 recommandations (exclure films déjà vus) ──</span>
+recs = data.loc[~data[<span class="st">'id'</span>].<span class="fn">isin</span>(user_watched)]
+recs.<span class="fn">sort_values</span>(<span class="st">'score'</span>, ascending=<span class="nm">False</span>)[[<span class="st">'title'</span>, <span class="st">'score'</span>]].<span class="fn">head</span>(<span class="nm">10</span>)</div>
+  </div>
+
+  <div class="co danger">
+    <strong>⚠️ Limite du genre seul :</strong> Deux films d'action peuvent être très différents. Le Dark Knight (super-héros, sombre) vs Fast & Furious (voitures, action). Les genres seuls ne suffisent pas → utiliser aussi le <strong>résumé (overview)</strong>.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     3 · TF-IDF
+══════════════════════════════════════════════════════ -->
+<section class="sec fi" id="s3">
+  <div class="sec-hd">
+    <span class="sec-n">03</span>
+    <span class="sec-ico">📝</span>
+    <h2 class="sec-ttl">TF-IDF — Encoder le texte</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-ttl">Pourquoi TF-IDF ? <span class="tag tp">CONCEPT</span></div>
+    <p>TF-IDF transforme un texte (overview de film) en <strong>vecteur numérique</strong>. Les mots importants (rares dans le corpus mais fréquents dans le document) ont un poids élevé. Les mots courants ("the", "a", "is") sont ignorés.</p>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-ttl">📐 TF — Term Frequency</div>
+      <div class="form">TF(t,d) = nb occurrences de t dans d / nb total de mots dans d</div>
+      <p style="font-size:13px;">Fréquence du mot dans le document. Un mot qui apparaît souvent est important pour ce document.</p>
+    </div>
+    <div class="card">
+      <div class="card-ttl">📐 IDF — Inverse Document Frequency</div>
+      <div class="form">IDF(t) = log(N / df(t))</div>
+      <p style="font-size:13px;">N = nb total de documents. df(t) = nb de documents qui contiennent t. Un mot présent partout (faible IDF) est peu informatif.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-ttl">💡 Intuition avec exemple</div>
+    <div class="g2">
+      <div style="padding:14px;border:1px solid var(--border);border-radius:8px;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:8px;">MOT : "Batman"</div>
+        <div style="font-size:13px;">Apparaît dans 3 films sur 10 000. IDF élevé → mot très discriminant → poids fort.</div>
+      </div>
+      <div style="padding:14px;border:1px solid var(--border);border-radius:8px;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:8px;">MOT : "movie"</div>
+        <div style="font-size:13px;">Apparaît dans 9 800 films. IDF très faible → mot non informatif → poids faible.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="clabel">PYTHON — TF-IDF SUR LES OVERVIEWS</div>
+    <div class="code"><span class="kw">from</span> sklearn.feature_extraction.text <span class="kw">import</span> <span class="fn">TfidfVectorizer</span>
+
+<span class="cm"># Remplir les NaN par une chaîne vide</span>
+movies_overview = data.overview.<span class="fn">fillna</span>(<span class="st">''</span>).values
+
+<span class="cm"># Créer le vectoriseur</span>
+<span class="cm"># stop_words : ignore les mots courants anglais</span>
+<span class="cm"># max_features : garde seulement les 5000 mots les plus importants</span>
+vectorizer = <span class="fn">TfidfVectorizer</span>(stop_words=<span class="st">'english'</span>, max_features=<span class="nm">5000</span>)
+
+<span class="cm"># fit_transform sur TOUS les films</span>
+tfidf_matrix = vectorizer.<span class="fn">fit_transform</span>(movies_overview).<span class="fn">toarray</span>()
+<span class="cm"># shape : (nb_films, 5000)</span>
+
+<span class="cm"># Pour les films de l'utilisateur → transform() seulement (pas fit !)</span>
+user_tfidf = vectorizer.<span class="fn">transform</span>(user_watch_list[<span class="st">'overview'</span>].values).<span class="fn">toarray</span>()
+
+<span class="cm"># ⚠️ IMPORTANT : fit sur tout le corpus, transform sur les sous-ensembles</span></div>
+  </div>
+
+  <div class="co danger">
+    <strong>⚠️ fit() vs transform() :</strong> On fait <code>fit_transform()</code> sur l'ensemble complet des films. Ensuite, pour les films de l'utilisateur, on fait seulement <code>transform()</code> — jamais <code>fit_transform()</code> — pour utiliser le même vocabulaire.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     4 · USER PROFILE
+══════════════════════════════════════════════════════ -->
+<section class="sec fi" id="s4">
+  <div class="sec-hd">
+    <span class="sec-n">04</span>
+    <span class="sec-ico">👤</span>
+    <h2 class="sec-ttl">User Profile — Construction</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-ttl">Qu'est-ce qu'un User Profile ? <span class="tag tc">FONDAMENTAL</span></div>
+    <p>Le profil utilisateur est un <strong>vecteur numérique</strong> qui résume les préférences de l'utilisateur. Il est calculé comme la <strong>moyenne</strong> des vecteurs des items qu'il a aimés.</p>
+    <div class="form">user_profile = mean(vecteur_film_1, vecteur_film_2, ..., vecteur_film_n)</div>
+  </div>
+
+  <div class="diag">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:16px;letter-spacing:2px;">CONSTRUCTION DU PROFIL UTILISATEUR</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+      <div style="text-align:center;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:6px;">Film 1 (Dark Knight)</div>
+        <div style="background:var(--hl);border:1px solid rgba(124,106,247,.3);padding:10px 16px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--a1);">[0,1,1,0,1,0,...]</div>
+      </div>
+      <div style="color:var(--muted);font-size:20px;">+</div>
+      <div style="text-align:center;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:6px;">Film 2 (Avengers)</div>
+        <div style="background:var(--hl);border:1px solid rgba(124,106,247,.3);padding:10px 16px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--a1);">[0,1,1,1,0,0,...]</div>
+      </div>
+      <div style="color:var(--muted);font-size:20px;">+</div>
+      <div style="text-align:center;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:6px;">Film 3 (Deadpool)</div>
+        <div style="background:var(--hl);border:1px solid rgba(124,106,247,.3);padding:10px 16px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--a1);">[1,1,0,1,0,0,...]</div>
+      </div>
+      <div style="color:var(--muted);font-size:20px;">÷3 =</div>
+      <div style="text-align:center;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--a3);margin-bottom:6px;">User Profile</div>
+        <div style="background:rgba(61,232,160,.1);border:1px solid rgba(61,232,160,.3);padding:10px 16px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--a3);">[0.33,1,0.67,0.67,...]</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="clabel">PYTHON — CONSTRUCTION DU USER PROFILE</div>
+    <div class="code"><span class="cm"># Films vus par l'utilisateur</span>
+user_watched = [<span class="st">'49026'</span>, <span class="st">'99861'</span>, <span class="st">'293660'</span>]
+user_watch_list = data.loc[data[<span class="st">'id'</span>].<span class="fn">isin</span>(user_watched)]
+
+<span class="cm"># ── Cas 1 : User Profile via genres (DataFrame) ──────</span>
+user_profile = user_watch_list[genres_names].<span class="fn">mean</span>()
+user_profile = user_profile.values.<span class="fn">reshape</span>(<span class="nm">1</span>, -<span class="nm">1</span>)  <span class="cm"># (1, n_genres)</span>
+
+<span class="cm"># ── Cas 2 : User Profile via TF-IDF (numpy) ──────────</span>
+user_tfidf = vectorizer.<span class="fn">transform</span>(user_watch_list[<span class="st">'overview'</span>].values).<span class="fn">toarray</span>()
+user_profile = user_tfidf.<span class="fn">mean</span>(axis=<span class="nm">0</span>)           <span class="cm"># moyenne sur les lignes</span>
+user_profile = user_profile.<span class="fn">reshape</span>(<span class="nm">1</span>, -<span class="nm">1</span>)        <span class="cm"># (1, 5000)</span>
+
+<span class="cm"># ── Cosine Similarity ────────────────────────────────</span>
+cosine_score = <span class="fn">cosine_similarity</span>(tfidf_matrix, user_profile)
+data[<span class="st">'score'</span>] = cosine_score.<span class="fn">flatten</span>()</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     5 · MULTI-FEATURES
+══════════════════════════════════════════════════════ -->
+<section class="sec fi" id="s5">
+  <div class="sec-hd">
+    <span class="sec-n">05</span>
+    <span class="sec-ico">🔀</span>
+    <h2 class="sec-ttl">Combinaison Multi-Features</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-ttl">Pourquoi combiner ? <span class="tag tp">CONCEPT</span></div>
+    <p>Utiliser un seul type de feature (genre seul, ou texte seul) donne des résultats imparfaits. On peut combiner <strong>genres + overview + type + popularité</strong> pour des recommandations plus précises.</p>
+  </div>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(247,201,72,.3);">
+      <div class="card-ttl">⚡ Early Fusion <span class="tag ty">CONCATENATION</span></div>
+      <p style="font-size:13px;">Encoder séparément chaque feature, puis <strong>concaténer</strong> tous les vecteurs en un seul grand vecteur. Un seul calcul de cosine similarity.</p>
+      <div class="form" style="font-size:11px;">content_vector = [genre_onehot | type_onehot | rating_scaled | members_scaled]</div>
+      <div class="co" style="margin-top:10px;font-size:12px;"><strong>Challenge :</strong> Une feature avec beaucoup de dimensions peut dominer les autres.</div>
+    </div>
+    <div class="card" style="border-color:rgba(61,232,160,.3);">
+      <div class="card-ttl">🔮 Late Fusion <span class="tag tg">PONDÉRATION</span></div>
+      <p style="font-size:13px;">Calculer un cosine similarity <strong>séparé</strong> pour chaque feature, puis combiner avec des <strong>poids</strong>.</p>
+      <div class="form" style="font-size:11px;">score = 0.4×cos(genre) + 0.2×cos(type) + 0.2×cos(members) + 0.2×cos(ratings)</div>
+      <div class="co tip" style="margin-top:10px;font-size:12px;"><strong>Avantage :</strong> Contrôle fin du poids de chaque feature. <strong>Challenge :</strong> Comment trouver les bons poids ?</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="clabel">PYTHON — EARLY FUSION (np.concatenate)</div>
+    <div class="code"><span class="kw">from</span> sklearn.preprocessing <span class="kw">import</span> <span class="fn">OneHotEncoder</span>, <span class="fn">MinMaxScaler</span>, <span class="fn">Normalizer</span>
+
+<span class="cm"># Encoder le type (Movie, TV Series, etc.)</span>
+ohe = <span class="fn">OneHotEncoder</span>()
+type_onehot = ohe.<span class="fn">fit_transform</span>(data[[<span class="st">'type'</span>]]).<span class="fn">toarray</span>()
+
+<span class="cm"># Scaler les features numériques</span>
+rating_scaled = <span class="fn">MinMaxScaler</span>().<span class="fn">fit_transform</span>(data[[<span class="st">'rating'</span>]])
+members_scaled = <span class="fn">MinMaxScaler</span>().<span class="fn">fit_transform</span>(np.<span class="fn">log1p</span>(data[[<span class="st">'members'</span>]]))
+<span class="cm"># np.log1p : log(1+x) pour réduire l'effet des grands nombres</span>
+
+<span class="cm"># Normaliser avant concatenation (optionnel mais recommandé)</span>
+genres_norm = <span class="fn">Normalizer</span>().<span class="fn">fit_transform</span>(genres_onehot)
+tfidf_norm  = <span class="fn">Normalizer</span>().<span class="fn">fit_transform</span>(tfidf_matrix)
+
+<span class="cm"># Concatener tous les vecteurs</span>
+content_vector = np.<span class="fn">concatenate</span>([
+    genres_norm,       <span class="cm"># one-hot genres</span>
+    type_onehot,       <span class="cm"># one-hot type</span>
+    rating_scaled,     <span class="cm"># score normalisé</span>
+    members_scaled     <span class="cm"># popularité normalisée</span>
+], axis=<span class="nm">1</span>)
+
+<span class="fn">print</span>(content_vector.shape)  <span class="cm"># (nb_films, somme des dims)</span></div>
+  </div>
+
+  <div class="co info">
+    <strong>💡 np.log1p(members) :</strong> La popularité peut varier de 1 à 1 000 000. Sans transformation, elle dominerait tout. <code>log(1+x)</code> compresse ces valeurs dans une plage raisonnable.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     6 · COLLABORATIVE FILTERING
+══════════════════════════════════════════════════════ -->
+<section class="sec fi" id="s6">
+  <div class="sec-hd">
+    <span class="sec-n">06</span>
+    <span class="sec-ico">👥</span>
+    <h2 class="sec-ttl">Collaborative Filtering</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-ttl">Principe <span class="tag tg">CONCEPT CLÉ</span></div>
+    <p>Au lieu d'analyser le contenu des items, le CF analyse les <strong>comportements des utilisateurs</strong>. Si l'utilisateur A et l'utilisateur B ont des goûts similaires, ce que B a aimé peut être recommandé à A.</p>
+    <div class="co info"><strong>Analogie :</strong> "Les amis qui ont des goûts similaires aux tiens ont aussi aimé ce film."</div>
+  </div>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(56,189,248,.3);">
+      <div class="card-ttl">👤 User-Based CF</div>
+      <p style="font-size:13px;">Trouver des <strong>utilisateurs similaires</strong> à l'utilisateur cible, puis recommander ce qu'ils ont aimé.</p>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--a5);margin-top:10px;">
+        User A ↔ User B ← similaires<br>
+        B a aimé film X<br>
+        → Recommander X à A
+      </div>
+    </div>
+    <div class="card" style="border-color:rgba(247,201,72,.3);">
+      <div class="card-ttl">🎬 Item-Based CF</div>
+      <p style="font-size:13px;">Trouver des <strong>items similaires</strong> à ce que l'utilisateur a aimé, en se basant sur les patterns de notation.</p>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--a4);margin-top:10px;">
+        Film X ↔ Film Y ← souvent notés ensemble<br>
+        User A a aimé X<br>
+        → Recommander Y à A
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-ttl">📊 User-Item Matrix — La structure centrale</div>
+    <p>Le point de départ du CF : une matrice où les <strong>lignes = utilisateurs</strong>, les <strong>colonnes = items</strong>, et les valeurs = notes. Les cases vides (0 ou NaN) = non noté.</p>
+    <div class="code"><span class="cm"># Construire la User-Item Matrix</span>
+user_item_matrix = pd.<span class="fn">pivot_table</span>(
+    data,
+    index=<span class="st">'userId'</span>,
+    columns=<span class="st">'movieId'</span>,
+    values=<span class="st">'rating'</span>
+)
+user_item_matrix.<span class="fn">fillna</span>(<span class="nm">0</span>, inplace=<span class="nm">True</span>)
+<span class="cm"># Shape : (nb_users, nb_movies)</span></div>
+    <div class="co" style="margin-top:12px;"><strong>Résultat :</strong> Une matrice (nb_users × nb_movies). La plupart des cases sont 0 car les utilisateurs n'ont pas noté la majorité des films → matrice <strong>sparse (creuse)</strong>.</div>
+  </div>
+
+  <div class="card">
+    <div class="clabel">PYTHON — USER-BASED COLLABORATIVE FILTERING</div>
+    <div class="code"><span class="kw">from</span> sklearn.metrics.pairwise <span class="kw">import</span> <span class="fn">cosine_similarity</span>
+
+<span class="cm"># ── Similarité entre utilisateurs ───────────────────</span>
+<span class="cm"># On transpose : chaque utilisateur devient une colonne</span>
+user_similarity = <span class="fn">cosine_similarity</span>(user_item_matrix.T)
+user_similarity_df = pd.<span class="fn">DataFrame</span>(
+    user_similarity,
+    index=user_item_matrix.index,
+    columns=user_item_matrix.index
+)
+
+<span class="cm"># ── Prédiction des notes ─────────────────────────────</span>
+<span class="cm"># Formule : note prédite = Σ(sim × notes) / Σ(|sim|)</span>
+<span class="kw">def</span> <span class="fn">predict_ratings</span>(similarity, ratings_matrix):
+    sim = similarity
+    ratings = ratings_matrix.values
+    predicted = sim.<span class="fn">dot</span>(ratings) / np.<span class="fn">abs</span>(sim).<span class="fn">sum</span>(axis=<span class="nm">0</span>).<span class="fn">reshape</span>(-<span class="nm">1</span>, <span class="nm">1</span>)
+    <span class="kw">return</span> pd.<span class="fn">DataFrame</span>(predicted,
+                        index=ratings_matrix.index,
+                        columns=ratings_matrix.columns)
+
+predictions = <span class="fn">predict_ratings</span>(user_similarity, user_item_matrix)
+
+<span class="cm"># ── Recommandation pour un utilisateur ──────────────</span>
+<span class="kw">def</span> <span class="fn">recommend_for_user</span>(user_id, predictions, original_data):
+    <span class="cm"># Films déjà notés (à exclure)</span>
+    already_rated = original_data.loc[user_id]
+    already_rated = already_rated[already_rated > <span class="nm">0</span>].index
+
+    user_pred = predictions.loc[user_id]
+    user_pred = user_pred.<span class="fn">drop</span>(already_rated)
+    <span class="kw">return</span> user_pred.<span class="fn">sort_values</span>(ascending=<span class="nm">False</span>).<span class="fn">head</span>(<span class="nm">10</span>)
+
+recs = <span class="fn">recommend_for_user</span>(<span class="nm">4</span>, predictions, user_item_matrix)</div>
+  </div>
+
+  <div class="card">
+    <div class="card-ttl">⚠️ Problèmes du Collaborative Filtering</div>
+    <div class="g2" style="margin-top:8px;">
+      <div style="padding:14px;border:1px solid rgba(247,108,108,.2);border-radius:8px;background:rgba(247,108,108,.04);">
+        <strong style="color:var(--a2);">Cold Start Problem</strong>
+        <p style="font-size:13px;margin-top:6px;">Un nouvel utilisateur (0 notes) ou un nouvel item (0 votes) → impossible de calculer la similarité.</p>
+      </div>
+      <div style="padding:14px;border:1px solid rgba(247,108,108,.2);border-radius:8px;background:rgba(247,108,108,.04);">
+        <strong style="color:var(--a2);">Sparsity (Matrice creuse)</strong>
+        <p style="font-size:13px;margin-top:6px;">La plupart des utilisateurs n'ont noté qu'un petit pourcentage des items. La matrice est quasi-vide.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     7 · COSINE SIMILARITY
+══════════════════════════════════════════════════════ -->
+<section class="sec fi" id="s7">
+  <div class="sec-hd">
+    <span class="sec-n">07</span>
+    <span class="sec-ico">📐</span>
+    <h2 class="sec-ttl">Cosine Similarity — Le moteur des RS</h2>
+  </div>
+
+  <div class="card">
+    <div class="card-ttl">Définition <span class="tag tc">FORMULE EXAMEN</span></div>
+    <p>La similarité cosinus mesure le <strong>cosinus de l'angle</strong> entre deux vecteurs. Elle varie de <strong>-1 à 1</strong> (ou 0 à 1 pour des vecteurs non-négatifs comme les one-hot).</p>
+    <div class="form">cos(A,B) = (A · B) / (||A|| × ||B||)</div>
+  </div>
+
+  <div class="g3">
+    <div class="card" style="text-align:center;border-color:rgba(61,232,160,.3);">
+      <div style="font-size:36px;font-family:'JetBrains Mono',monospace;color:var(--a3);font-weight:700;">+1</div>
+      <p style="font-size:12px;margin-top:6px;">Même direction. <strong>Identiques.</strong><br>Angle = 0°</p>
+    </div>
+    <div class="card" style="text-align:center;border-color:rgba(247,201,72,.3);">
+      <div style="font-size:36px;font-family:'JetBrains Mono',monospace;color:var(--a4);font-weight:700;">0</div>
+      <p style="font-size:12px;margin-top:6px;">Orthogonaux. <strong>Aucune similarité.</strong><br>Angle = 90°</p>
+    </div>
+    <div class="card" style="text-align:center;border-color:rgba(247,108,108,.3);">
+      <div style="font-size:36px;font-family:'JetBrains Mono',monospace;color:var(--a2);font-weight:700;">-1</div>
+      <p style="font-size:12px;margin-top:6px;">Directions opposées. <strong>Contraires.</strong><br>Angle = 180°</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="clabel">PYTHON — COSINE SIMILARITY (TOUS LES CAS)</div>
+    <div class="code"><span class="kw">from</span> sklearn.metrics.pairwise <span class="kw">import</span> <span class="fn">cosine_similarity</span>
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cm"># ── Exemple simple ───────────────────────────────────</span>
+A = np.<span class="fn">array</span>([[<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>]])
+B = np.<span class="fn">array</span>([[<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>]])   <span class="cm"># → cos = 1.0 (identiques)</span>
+C = np.<span class="fn">array</span>([[-<span class="nm">1</span>, -<span class="nm">2</span>, -<span class="nm">3</span>]])  <span class="cm"># → cos = -1.0 (opposés)</span>
+
+<span class="cm"># ── User Profile vs tous les items ───────────────────</span>
+<span class="cm"># user_profile shape : (1, n_features)</span>
+<span class="cm"># items_matrix shape : (n_items, n_features)</span>
+scores = <span class="fn">cosine_similarity</span>(items_matrix, user_profile)
+<span class="cm"># scores shape : (n_items, 1)</span>
+
+data[<span class="st">'score'</span>] = scores.<span class="fn">flatten</span>()  <span class="cm"># .flatten() → 1D array</span>
+
+<span class="cm"># ── Matrice de similarité utilisateurs ───────────────</span>
+<span class="cm"># user_item_matrix shape : (n_users, n_items)</span>
+<span class="cm"># .T = transpose pour avoir les users en colonnes</span>
+user_sim = <span class="fn">cosine_similarity</span>(user_item_matrix.T)
+<span class="cm"># user_sim shape : (n_users, n_users)</span></div>
+  </div>
+
+  <div class="co tip">
+    <strong>💡 .flatten() :</strong> cosine_similarity retourne une matrice 2D (n_items, 1). On utilise <code>.flatten()</code> pour obtenir un array 1D qu'on peut assigner comme colonne d'un DataFrame.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     8 · PIPELINE COMPLET
+══════════════════════════════════════════════════════ -->
+<section class="sec fi" id="s8">
+  <div class="sec-hd">
+    <span class="sec-n">08</span>
+    <span class="sec-ico">🔧</span>
+    <h2 class="sec-ttl">Pipeline Complet — Fiches Résumé</h2>
+  </div>
+
+  <!-- Content-Based Full -->
+  <div class="card">
+    <div class="card-ttl">📋 Content-Based : Genre + Overview (Combiné)</div>
+    <div class="code"><span class="cm"># ════════════════════════════════════════════════════</span>
+<span class="cm"># CONTENT-BASED : Genre + Overview (notebook combiné)</span>
+<span class="cm"># ════════════════════════════════════════════════════</span>
+
+<span class="kw">import</span> pandas <span class="kw">as</span> pd, numpy <span class="kw">as</span> np
+<span class="kw">from</span> sklearn.preprocessing <span class="kw">import</span> <span class="fn">MultiLabelBinarizer</span>, <span class="fn">Normalizer</span>
+<span class="kw">from</span> sklearn.feature_extraction.text <span class="kw">import</span> <span class="fn">TfidfVectorizer</span>
+<span class="kw">from</span> sklearn.metrics.pairwise <span class="kw">import</span> <span class="fn">cosine_similarity</span>
+
+data = pd.<span class="fn">read_csv</span>(<span class="st">'movies_metadata.csv'</span>, low_memory=<span class="nm">False</span>)
+
+<span class="cm"># ── 1. GENRES ─────────────────────────────────────────</span>
+data[<span class="st">'genre_names'</span>] = data[<span class="st">'genres'</span>].<span class="fn">apply</span>(
+    <span class="kw">lambda</span> x: [d[<span class="st">'name'</span>] <span class="kw">for</span> d <span class="kw">in</span> <span class="fn">eval</span>(x)])
+<span class="cm"># Nettoyage : enlever les non-genres</span>
+
+mlb = <span class="fn">MultiLabelBinarizer</span>()
+genres_onehot = mlb.<span class="fn">fit_transform</span>(data[<span class="st">'genre_names'</span>])
+genres_onehot = <span class="fn">Normalizer</span>().<span class="fn">fit_transform</span>(genres_onehot)
+
+<span class="cm"># ── 2. OVERVIEW (TF-IDF) ──────────────────────────────</span>
+vectorizer = <span class="fn">TfidfVectorizer</span>(stop_words=<span class="st">'english'</span>, max_features=<span class="nm">5000</span>)
+tfidf = vectorizer.<span class="fn">fit_transform</span>(data.overview.<span class="fn">fillna</span>(<span class="st">''</span>)).<span class="fn">toarray</span>()
+tfidf = <span class="fn">Normalizer</span>().<span class="fn">fit_transform</span>(tfidf)
+
+<span class="cm"># ── 3. CONCATENER ─────────────────────────────────────</span>
+encoding = np.<span class="fn">concatenate</span>([tfidf, genres_onehot], axis=<span class="nm">1</span>)
+
+<span class="cm"># ── 4. USER PROFILE ───────────────────────────────────</span>
+user_watched = [<span class="st">'49026'</span>, <span class="st">'99861'</span>, <span class="st">'293660'</span>]
+watch_list = data.loc[data[<span class="st">'id'</span>].<span class="fn">isin</span>(user_watched)]
+
+tfidf_wl = vectorizer.<span class="fn">transform</span>(watch_list.overview.<span class="fn">fillna</span>(<span class="st">''</span>)).<span class="fn">toarray</span>()
+genres_wl = mlb.<span class="fn">transform</span>(watch_list[<span class="st">'genre_names'</span>])
+
+user_pref = np.<span class="fn">concatenate</span>([tfidf_wl, genres_wl], axis=<span class="nm">1</span>)
+user_profile = user_pref.<span class="fn">mean</span>(axis=<span class="nm">0</span>).<span class="fn">reshape</span>(<span class="nm">1</span>, -<span class="nm">1</span>)
+
+<span class="cm"># ── 5. RECOMMANDATION ────────────────────────────────</span>
+data[<span class="st">'score'</span>] = <span class="fn">cosine_similarity</span>(encoding, user_profile).<span class="fn">flatten</span>()
+recs = data.loc[~data[<span class="st">'id'</span>].<span class="fn">isin</span>(user_watched)]
+recs.<span class="fn">sort_values</span>(<span class="st">'score'</span>, ascending=<span class="nm">False</span>)[[<span class="st">'title'</span>, <span class="st">'score'</span>]].<span class="fn">head</span>(<span class="nm">10</span>)</div>
+  </div>
+
+  <!-- Grand tableau comparaison -->
+  <div class="card" style="margin-top:20px;">
+    <div class="card-ttl">📊 Tableau récapitulatif — Tout en un</div>
+    <table class="tbl" style="margin-top:12px;">
+      <thead><tr><th>NOTION</th><th>FONCTION/OUTIL</th><th>PARAMÈTRES CLÉS</th><th>OUTPUT</th></tr></thead>
+      <tbody>
+        <tr><td>One-hot genres</td><td><code>MultiLabelBinarizer()</code></td><td><code>fit_transform(genre_list)</code></td><td>Matrice binaire (n,n_genres)</td></tr>
+        <tr><td>Encoder texte</td><td><code>TfidfVectorizer()</code></td><td><code>stop_words, max_features</code></td><td>Matrice TF-IDF (n,max_feat)</td></tr>
+        <tr><td>Encoder catégorie</td><td><code>OneHotEncoder()</code></td><td><code>fit_transform(df[[col]])</code></td><td>Matrice sparse</td></tr>
+        <tr><td>Normaliser 0-1</td><td><code>MinMaxScaler()</code></td><td><code>fit_transform(df[[col]])</code></td><td>Valeurs ∈ [0,1]</td></tr>
+        <tr><td>Normaliser vecteurs</td><td><code>Normalizer()</code></td><td><code>fit_transform(matrix)</code></td><td>Norme L2 = 1</td></tr>
+        <tr><td>Similarité</td><td><code>cosine_similarity()</code></td><td><code>(A, B)</code></td><td>Score ∈ [-1,1]</td></tr>
+        <tr><td>User-Item Matrix</td><td><code>pd.pivot_table()</code></td><td><code>index, columns, values</code></td><td>DataFrame (users×items)</td></tr>
+        <tr><td>Concaténer features</td><td><code>np.concatenate()</code></td><td><code>([A,B,C], axis=1)</code></td><td>Matrice combinée</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Points pièges -->
+  <div class="card" style="margin-top:20px;">
+    <div class="card-ttl">🎯 Points à ne pas confondre à l'examen</div>
+    <div class="g2" style="margin-top:10px;">
+      <div class="co danger" style="margin:0;">
+        <strong>fit_transform() vs transform()</strong><br>
+        <span style="font-size:13px;"><code>fit_transform()</code> = apprendre + transformer (sur le train/corpus complet)<br>
+        <code>transform()</code> = transformer seulement (sur les nouvelles données)</span>
+      </div>
+      <div class="co danger" style="margin:0;">
+        <strong>mean(axis=0) vs mean()</strong><br>
+        <span style="font-size:13px;"><code>mean(axis=0)</code> = moyenne sur les lignes → vecteur profil<br>
+        <code>mean()</code> sur un DataFrame = même chose via pandas</span>
+      </div>
+      <div class="co danger" style="margin:0;margin-top:12px;">
+        <strong>reshape(1,-1)</strong><br>
+        <span style="font-size:13px;">cosine_similarity attend une matrice 2D. Un vecteur 1D doit être <code>reshape(1,-1)</code> avant d'être passé.</span>
+      </div>
+      <div class="co danger" style="margin:0;margin-top:12px;">
+        <strong>~isin() pour exclure</strong><br>
+        <span style="font-size:13px;"><code>~</code> = NOT en pandas. Exclure les films déjà vus :<br>
+        <code>data[~data['id'].isin(user_watched)]</code></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     9 · QUIZ
+══════════════════════════════════════════════════════ -->
+<section class="sec fi" id="s9">
+  <div class="sec-hd">
+    <span class="sec-n">09</span>
+    <span class="sec-ico">🎯</span>
+    <h2 class="sec-ttl">Quiz — Systèmes de Recommandation</h2>
+  </div>
+  <div id="qz"></div>
+  <div style="text-align:center;margin-top:20px;" id="qscore"></div>
+</section>
+
+<!-- KEYWORDS -->
+<section class="sec fi">
+  <div class="card" style="text-align:center;">
+    <div class="card-ttl" style="justify-content:center;margin-bottom:14px;">🔑 Tous les mots-clés de l'examen</div>
+    <div>
+      <span class="chip">cosine_similarity</span><span class="chip">TfidfVectorizer</span>
+      <span class="chip">MultiLabelBinarizer</span><span class="chip">OneHotEncoder</span>
+      <span class="chip">MinMaxScaler</span><span class="chip">Normalizer</span>
+      <span class="chip">StandardScaler</span><span class="chip">pivot_table</span>
+      <span class="chip">fit_transform</span><span class="chip">transform</span>
+      <span class="chip">np.concatenate</span><span class="chip">reshape(1,-1)</span>
+      <span class="chip">flatten()</span><span class="chip">fillna</span>
+      <span class="chip">user_profile</span><span class="chip">user_item_matrix</span>
+      <span class="chip">cold start</span><span class="chip">sparsity</span>
+      <span class="chip">early fusion</span><span class="chip">late fusion</span>
+      <span class="chip">IMDB weighted rating</span><span class="chip">KMeans</span>
+      <span class="chip">DBSCAN</span><span class="chip">silhouette_score</span>
+      <span class="chip">elbow method</span><span class="chip">PCA</span>
+      <span class="chip">inertia_</span><span class="chip">fit_predict</span>
+      <span class="chip">cluster_centers_</span><span class="chip">eps</span>
+      <span class="chip">min_samples</span><span class="chip">label -1</span>
+    </div>
+  </div>
+</section>
+
+</div><!-- end wrap -->
+
+<footer>DS Machine Learning · Systèmes de Recommandation + Clustering · Révision Complète</footer>
+
+<script>
+// ── PROGRESS ────────────────────────────────────────
+window.addEventListener('scroll',()=>{
+  const p=(window.scrollY/(document.documentElement.scrollHeight-window.innerHeight))*100;
+  document.getElementById('prog').style.width=p+'%';
+});
+
+// ── SCROLL NAV ──────────────────────────────────────
+function go(id){
+  document.getElementById(id).scrollIntoView({behavior:'smooth',block:'start'});
+  document.querySelectorAll('.npill').forEach(p=>p.classList.remove('on'));
+  event.target.classList.add('on');
+}
+
+// ── INTERSECTION OBSERVER ───────────────────────────
+const obs=new IntersectionObserver(es=>{
+  es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('vis');});
+},{threshold:.08});
+document.querySelectorAll('.fi').forEach(el=>obs.observe(el));
+
+// ── QUIZ ────────────────────────────────────────────
+const Qs=[
+  {
+    q:"Quelle est la différence principale entre Content-Based et Collaborative Filtering ?",
+    opts:[
+      "Content-Based utilise des réseaux de neurones, CF non",
+      "Content-Based analyse les attributs des items ; CF analyse les comportements des utilisateurs",
+      "Content-Based est plus précis que CF dans tous les cas",
+      "CF nécessite plus de données que Content-Based"
+    ],
+    ok:1,
+    ex:"✅ Content-Based se base sur QUOI l'utilisateur a aimé (genres, description). Collaborative Filtering se base sur QUI d'autres a aimé des items similaires."
+  },
+  {
+    q:"Que fait MultiLabelBinarizer ?",
+    opts:[
+      "Encode des valeurs numériques entre 0 et 1",
+      "Réduit les dimensions d'une matrice",
+      "Transforme des listes de labels en vecteurs one-hot binaires",
+      "Calcule la similarité entre items"
+    ],
+    ok:2,
+    ex:"✅ MLB transforme ['Action','Comedy'] en [1,0,1,0,...] — un vecteur binaire où chaque position correspond à un genre."
+  },
+  {
+    q:"Dans TF-IDF, pourquoi un mot très fréquent dans TOUS les documents a-t-il un poids faible ?",
+    opts:[
+      "Parce que TF est faible",
+      "Parce que IDF est faible (log(N/df) → 0 quand df≈N)",
+      "Parce qu'il est automatiquement supprimé par le vectoriseur",
+      "Pour des raisons computationnelles uniquement"
+    ],
+    ok:1,
+    ex:"✅ Si un mot est dans tous les documents, df≈N, donc IDF = log(N/N) ≈ 0. Ce mot est non-discriminant (ex: 'the', 'is'). D'où l'option stop_words='english'."
+  },
+  {
+    q:"Dans la formule IMDB : score = (v/(v+m))×R + (m/(v+m))×C — que se passe-t-il quand v → 0 ?",
+    opts:[
+      "Le score tend vers R (vrai score du film)",
+      "Le score tend vers C (moyenne globale)",
+      "Le score tend vers 0",
+      "Le score tend vers m"
+    ],
+    ok:1,
+    ex:"✅ Quand v=0, (0/(0+m))×R + (m/(0+m))×C = 0 + C. Un film sans votes reçoit la note moyenne globale C. Correct !"
+  },
+  {
+    q:"Pourquoi utilise-t-on .transform() (et non .fit_transform()) pour les films de l'utilisateur dans TF-IDF ?",
+    opts:[
+      "Pour aller plus vite",
+      "Pour utiliser le même vocabulaire que celui appris sur tout le corpus",
+      "Parce que fit_transform ne fonctionne pas sur de petits ensembles",
+      "C'est la même chose, les deux sont équivalents"
+    ],
+    ok:1,
+    ex:"✅ fit_transform() apprendrait un nouveau vocabulaire sur les 3 films de l'utilisateur — incompatible avec la matrice de tous les films. transform() utilise le vocabulaire déjà appris."
+  },
+  {
+    q:"Quelle est la shape attendue de user_profile avant cosine_similarity(items_matrix, user_profile) ?",
+    opts:[
+      "(n_features,)",
+      "(1, n_features)",
+      "(n_items, n_features)",
+      "(n_features, 1)"
+    ],
+    ok:1,
+    ex:"✅ cosine_similarity() attend des tableaux 2D. Un user_profile doit être reshape(1,-1) → shape (1, n_features). Sans ça → erreur ou résultat incorrect."
+  },
+  {
+    q:"Quel est le 'Cold Start Problem' dans le Collaborative Filtering ?",
+    opts:[
+      "L'algorithme est lent à démarrer sur de gros datasets",
+      "Les matrices sont trop denses à traiter",
+      "Impossible de recommander à un nouvel utilisateur ou item (pas de données historiques)",
+      "Le modèle oublie les anciennes préférences"
+    ],
+    ok:2,
+    ex:"✅ Un nouvel utilisateur n'a pas de notes → impossible de calculer sa similarité avec d'autres. Même problème pour un nouvel item. C'est le Cold Start Problem."
+  },
+  {
+    q:"Dans la Early Fusion, pourquoi normalise-t-on les features avant de les concaténer ?",
+    opts:[
+      "Pour augmenter la taille de la matrice",
+      "Pour que les features à grande dimension ne dominent pas les autres",
+      "Parce que cosine_similarity ne fonctionne qu'avec des données normalisées",
+      "Pour réduire le nombre de features"
+    ],
+    ok:1,
+    ex:"✅ Genre one-hot a 20 dimensions, TF-IDF en a 5000. Sans normalisation, la composante TF-IDF dominerait totalement. La normalisation (L2) met tous les vecteurs à la même norme."
+  },
+  {
+    q:"Comment construire la User-Item Matrix avec pandas ?",
+    opts:[
+      "data.groupby(['userId','movieId']).mean()",
+      "pd.pivot_table(data, index='userId', columns='movieId', values='rating')",
+      "data.merge(users_df, on='userId')",
+      "pd.crosstab(data.userId, data.movieId)"
+    ],
+    ok:1,
+    ex:"✅ pd.pivot_table() crée exactement la structure rows=users, columns=items, values=ratings. C'est l'outil standard pour construire une User-Item Matrix."
+  },
+  {
+    q:"Comment exclure les films déjà vus par l'utilisateur dans les recommandations ?",
+    opts:[
+      "data[data['id'] != user_watched]",
+      "data.drop(user_watched)",
+      "data[~data['id'].isin(user_watched)]",
+      "data.filter(user_watched)"
+    ],
+    ok:2,
+    ex:"✅ L'opérateur ~ est le NOT en pandas. isin() vérifie l'appartenance. ~data['id'].isin(user_watched) garde les films qui ne sont PAS dans la liste regardée."
+  }
+];
+
+let answered=0,correct=0;
+const qz=document.getElementById('qz');
+Qs.forEach((q,qi)=>{
+  const d=document.createElement('div');
+  d.className='qcard fi';
+  d.innerHTML=`<div class="qq">${qi+1}. ${q.q}</div>
+    ${q.opts.map((o,oi)=>`<button class="qopt" onclick="ans(${qi},${oi})" id="qo${qi}_${oi}">${o}</button>`).join('')}
+    <div class="qfb" id="qf${qi}"></div>`;
+  qz.appendChild(d);
+  obs.observe(d);
+});
+
+window.ans=function(qi,chosen){
+  const q=Qs[qi];
+  const fb=document.getElementById(`qf${qi}`);
+  if(fb.classList.contains('show'))return;
+  answered++;
+  const ok=chosen===q.ok;
+  if(ok)correct++;
+  for(let i=0;i<q.opts.length;i++){
+    const b=document.getElementById(`qo${qi}_${i}`);
+    b.disabled=true;
+    if(i===q.ok)b.classList.add('ok');
+    else if(i===chosen&&!ok)b.classList.add('no');
+  }
+  fb.textContent=ok?q.ex:`❌ ${q.ex}`;
+  fb.className=`qfb show ${ok?'ok':'no'}`;
+  document.getElementById('qscore').innerHTML=
+    `<span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted)">Score : <strong style="color:var(--a3)">${correct}</strong> / ${answered}</span>`;
+};
+</script>
+</body>
+</html>
